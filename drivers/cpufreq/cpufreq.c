@@ -572,6 +572,8 @@ static ssize_t show_bios_limit(struct cpufreq_policy *policy, char *buf)
 	return sprintf(buf, "%u\n", policy->cpuinfo.max_freq);
 }
 
+
+
 #ifdef CONFIG_CPU_VOLTAGE_TABLE
 
 extern ssize_t acpuclk_get_vdd_levels_str(char *buf);
@@ -1941,6 +1943,7 @@ out:
 	return ret;		
 }
 #endif
+
 
 /**
  *	cpufreq_update_policy - re-evaluate an existing cpufreq policy

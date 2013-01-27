@@ -82,6 +82,7 @@
 #include <mach/rpm-regulator.h>
 #include <mach/restart.h>
 #include <mach/board-msm8660.h>
+//#include <linux/msm_tsens.h>
 
 #include "devices.h"
 #include "devices_i_skt.h"
@@ -1214,7 +1215,7 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	 * used instead
 	 */
 	.pemp_level		 = PRE_EMPHASIS_WITH_20_PERCENT,
-	.cdr_autoreset		 = CDR_AUTO_RESET_DISABLE,
+	.cdr_autoreset	 = CDR_AUTO_RESET_DISABLE,
 	.se1_gating		 = SE1_GATING_DISABLE,
 	.bam_disable		 = 1,
 #ifdef CONFIG_USB_EHCI_MSM_72K
@@ -2478,6 +2479,15 @@ static struct platform_device *early_devices[] __initdata = {
 	&msm_device_dmov_adm1,
 };
 
+/*
+static struct tsens_platform_data pyr_tsens_pdata  = {
+		.tsens_factor		= 1000,
+		.hw_type		= MSM_8660,
+		.tsens_num_sensor	= 6,
+		.slope 		= 702,
+};
+*/
+
 static struct platform_device msm_tsens_device = {
 	.name   = "tsens-tm",
 	.id = -1,
@@ -3036,6 +3046,7 @@ static struct platform_device *surf_devices[] __initdata = {
 	&ion_dev,
 #endif
 	&msm8660_device_watchdog,
+	&msm8660_cpu_idle_device,
 
 #ifdef CONFIG_ATCMD_VIRTUAL_KBD
 	&atcmd_virtual_kbd_device,
@@ -6276,6 +6287,9 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	};
 #endif
 	pmic_reset_irq = PM8058_IRQ_BASE + PM8058_RESOUT_IRQ;
+
+
+	//msm_tsens_early_init(&pyr_tsens_pdata);
 
 	/*
 	 * Initialize RPM first as other drivers and devices may need
