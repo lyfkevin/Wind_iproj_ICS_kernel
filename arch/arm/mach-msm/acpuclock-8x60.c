@@ -33,8 +33,6 @@
 #include "acpuclock.h"
 #include "avs.h"
 
-extern unsigned int max_capped;
-
 /* Frequency switch modes. */
 #define SHOT_SWITCH		4
 #define HOP_SWITCH		5
@@ -249,7 +247,7 @@ static struct clkctl_acpu_speed *acpu_freq_tbl;
 static struct clkctl_l2_speed *l2_freq_tbl = l2_freq_tbl_v2;
 static unsigned int l2_freq_tbl_size = ARRAY_SIZE(l2_freq_tbl_v2);
 
-static unsigned long acpuclk_8x60_get_rate(int cpu)
+unsigned long acpuclk_8x60_get_rate(int cpu)
 {
 	return drv_state.current_speed[cpu]->acpuclk_khz;
 }
@@ -519,8 +517,6 @@ static int acpuclk_8x60_set_rate(int cpu, unsigned long rate,
 		goto out;
 	}
 
-	if (max_capped && rate > max_capped)
-		rate = max_capped;
 
 	if (reason == SETRATE_CPUFREQ || reason == SETRATE_HOTPLUG)
 		mutex_lock(&drv_state.lock);

@@ -4055,7 +4055,7 @@ static struct pmic8058_led pmic8058_flash_leds[] = {
 #ifdef CONFIG_LEDS_PMIC8058
 	[2] = {
 		.name		= "button-backlight",//"keypad:drv",
-		.max_brightness = 2,	    // lee.sangchul@lge.com, 2011-0913, led level change 1 -> 2
+		.max_brightness = 1,	    // lee.sangchul@lge.com, 2011-0913, led level change 1 -> 2
 		.id		= PMIC8058_ID_LED_KB_LIGHT,
 	},/* 300 mA keypad drv sink */
 #endif
