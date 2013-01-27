@@ -39,6 +39,9 @@
 #include "mdp.h"
 #include "mdp4.h"
 
+//dsi cmd tx completion timeout workaround
+#define DSI_DMA_COMP_WR
+
 static struct completion dsi_dma_comp;
 static struct completion dsi_mdp_comp;
 static struct dsi_buf dsi_tx_buf;
@@ -56,10 +59,6 @@ enum {
 	STAT_DSI_CMD,
 	STAT_DSI_MDP
 };
-
-
-//lcd black out workaround
-int dma_tx_timeout = 0;
 
 #ifdef CONFIG_FB_MSM_MDP40
 void mipi_dsi_mdp_stat_inc(int which)
@@ -790,9 +789,6 @@ void mipi_dsi_host_init(struct mipi_panel_info *pinfo)
 	else
 		pinfo->rgb_swap = DSI_RGB_SWAP_BGR;
 
-	//lcd black out workaround
-	mipi_dsi_sw_reset();
-
 	if (pinfo->mode == DSI_VIDEO_MODE) {
 		data = 0;
 		if (pinfo->pulse_mode_hsa_he)
@@ -1344,12 +1340,17 @@ int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 	MIPI_OUTP(MIPI_DSI_BASE + 0x08c, 0x01);	/* trigger */
 	wmb();
 	
-	// to avoid hang dsi completion timeout - 1s timeout
-	//wait_for_completion(&dsi_dma_comp);
+#ifdef DSI_DMA_COMP_WR
 	if(!wait_for_completion_timeout(&dsi_dma_comp, msecs_to_jiffies(VSYNC_PERIOD*20))) { // 320ms
-		dma_tx_timeout = 1;
-		printk(KERN_ERR "%s: wait_for_completion_timeout err .. \n", __func__);
+		pr_err("%s: wait_for_completion_timeout err .. \n", __func__);
+		dma_unmap_single(&dsi_dev, tp->dmap, len, DMA_TO_DEVICE); 
+		tp->dmap = 0;                                             
+		return 0;                                                 
+
 	}
+#else
+	wait_for_completion(&dsi_dma_comp);
+#endif
 
 	dma_unmap_single(&dsi_dev, tp->dmap, len, DMA_TO_DEVICE);
 	tp->dmap = 0;
@@ -1504,3 +1505,4 @@ irqreturn_t mipi_dsi_isr(int irq, void *ptr)
 
 	return IRQ_HANDLED;
 }
+

@@ -88,7 +88,11 @@ enum dhd_bus_state {
 #define POWERUP_MAX_RETRY	(10) /* how many times we retry to power up the chip */
 #endif
 #ifndef POWERUP_WAIT_MS
+#ifdef CONFIG_LGE_BCM432X_PATCH
+#define POWERUP_WAIT_MS		(4000) /* ms: time out in waiting wifi to come up */
+#else
 #define POWERUP_WAIT_MS		(2000) /* ms: time out in waiting wifi to come up */
+#endif
 #endif
 
 enum dhd_bus_wake_state {

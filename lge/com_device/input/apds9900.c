@@ -198,7 +198,7 @@ enum
 		APDS9900_DEBUG_INTR_INFO	= 1U << 5,
 };
 
-static unsigned int apds9900_debug_mask = APDS9900_DEBUG_ERROR_CHECK;
+static unsigned int apds9900_debug_mask = APDS9900_DEBUG_ERROR_CHECK|APDS9900_DEBUG_FUNC_TRACE;
 
 module_param_named(debug_mask, apds9900_debug_mask, int,
                 S_IRUGO | S_IWUSR );
@@ -2010,3 +2010,4 @@ MODULE_VERSION(DRIVER_VERSION);
 
 module_init(apds9900_init);
 module_exit(apds9900_exit);
+
