@@ -121,7 +121,7 @@ void webdload_common_cmd
 		data_read_flag = 1;
     }
 
-    switch( sub_cmd )
+    switch( (int)sub_cmd )
     {
 
 	case WEBDLOAD_READ_STEP_END:

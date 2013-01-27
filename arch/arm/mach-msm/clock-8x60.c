@@ -2257,6 +2257,7 @@ static struct clk_freq_tbl clk_tbl_gfx2d[] = {
 	F_GFX2D(177778000, pll2, 2,  9),
 	F_GFX2D(200000000, pll2, 1,  4),
 	F_GFX2D(228571000, pll2, 2,  7),
+	F_GFX2D(266667000, pll2, 1,  3),
 	F_END
 };
 
@@ -2296,8 +2297,13 @@ static struct rcg_clk gfx2d0_clk = {
 	.c = {
 		.dbg_name = "gfx2d0_clk",
 		.ops = &clk_ops_rcg_8x60,
+#ifdef CONFIG_MSM_KGSL_GPUOC_MAX
+		VDD_DIG_FMAX_MAP3(LOW,  100000000, NOMINAL, 200000000,
+				  HIGH, 266667000),
+#else
 		VDD_DIG_FMAX_MAP3(LOW,  100000000, NOMINAL, 200000000,
 				  HIGH, 228571000),
+#endif
 		CLK_INIT(gfx2d0_clk.c),
 	},
 };
@@ -2338,8 +2344,13 @@ static struct rcg_clk gfx2d1_clk = {
 	.c = {
 		.dbg_name = "gfx2d1_clk",
 		.ops = &clk_ops_rcg_8x60,
+#ifdef CONFIG_MSM_KGSL_GPUOC_MAX
+		VDD_DIG_FMAX_MAP3(LOW,  100000000, NOMINAL, 200000000,
+				  HIGH, 266667000),
+#else
 		VDD_DIG_FMAX_MAP3(LOW,  100000000, NOMINAL, 200000000,
 				  HIGH, 228571000),
+#endif
 		CLK_INIT(gfx2d1_clk.c),
 	},
 };
@@ -2368,6 +2379,7 @@ static struct clk_freq_tbl clk_tbl_gfx3d[] = {
 	F_GFX3D(200000000, pll2, 1,  4),
 	F_GFX3D(228571000, pll2, 2,  7),
 	F_GFX3D(266667000, pll2, 1,  3),
+	F_GFX3D(300000000, pll2, 3,  8),
 	F_GFX3D(320000000, pll2, 2,  5),
 	F_END
 };
@@ -3705,7 +3717,7 @@ static struct clk_lookup msm_clocks_8x60[] = {
 //	CLK_LOOKUP("iface_clk",		gsbi12_p_clk.c,		NULL),
 	CLK_LOOKUP("iface_clk",		gsbi12_p_clk.c, "msm_serial_hsl.0"),
 	CLK_LOOKUP("iface_clk",		gsbi12_p_clk.c,		"qup_i2c.5"),
-	CLK_LOOKUP("ppss_pclk",		ppss_p_clk.c,		NULL),
+	CLK_LOOKUP("iface_clk",    		ppss_p_clk.c,    	"msm_dsps"),
 	CLK_LOOKUP("iface_clk",		tsif_p_clk.c,		"msm_tsif.0"),
 	CLK_LOOKUP("iface_clk",		tsif_p_clk.c,		"msm_tsif.1"),
 	CLK_LOOKUP("iface_clk",		usb_fs1_p_clk.c,		NULL),

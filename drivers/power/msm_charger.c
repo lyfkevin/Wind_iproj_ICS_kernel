@@ -227,12 +227,12 @@ static int is_batt_status_capable_of_charging(void)
     return 1;
   else
   {
-    if (msm_chg.batt_status == BATT_STATUS_ABSENT
+	if (msm_chg.batt_status == BATT_STATUS_ABSENT
 	    || msm_chg.batt_status == BATT_STATUS_TEMPERATURE_OUT_OF_RANGE
 	    || msm_chg.batt_status == BATT_STATUS_ID_INVALID
 	    || msm_chg.batt_status == BATT_STATUS_JUST_FINISHED_CHARGING)
-		  return 0;
-	  return 1;
+		return 0;
+	return 1;
   }
 #else
 	if (msm_chg.batt_status == BATT_STATUS_ABSENT
@@ -319,12 +319,12 @@ static int is_battery_id_valid(void)
 		return 1;
 	else
 #endif
-    if (msm_batt_gauge && msm_batt_gauge->is_battery_id_valid)
-		  return msm_batt_gauge->is_battery_id_valid();
-	  else {
-		  pr_err("msm-charger no batt gauge batt=id_invalid\n");
-		  return 0;
-	  }
+	if (msm_batt_gauge && msm_batt_gauge->is_battery_id_valid)
+		return msm_batt_gauge->is_battery_id_valid();
+	else {
+		pr_err("msm-charger no batt gauge batt=id_invalid\n");
+		return 0;
+	}
   }
 #else
 	if (msm_batt_gauge && msm_batt_gauge->is_battery_id_valid)
@@ -457,7 +457,7 @@ static int get_prop_batt_status(void)
 		if(get_prop_batt_capacity() >= 100)
 			status = POWER_SUPPLY_STATUS_FULL;
 		else
-			status = POWER_SUPPLY_STATUS_CHARGING;
+		status = POWER_SUPPLY_STATUS_CHARGING;
 	}
 #else
 		status = POWER_SUPPLY_STATUS_CHARGING;
@@ -904,7 +904,7 @@ static int msm_batt_power_get_property(struct power_supply *psy,
 #endif
 
 #ifdef CONFIG_LGE_CHARGER_TEMP_SCENARIO
-	case POWER_SUPPLY_PROP_TEMP: // temp´Â ¿Âµµ °ª 
+	case POWER_SUPPLY_PROP_TEMP: // tempï¿½ï¿½ ï¿½Âµï¿½ ï¿½ï¿½ 
 	  if(pseudo_batt_info.mode == 1)
 		val->intval = pseudo_batt_info.temp*10;	  
 	  else if((6 ==get_ext_cable_type_value()) || (7 ==get_ext_cable_type_value()))
@@ -913,7 +913,7 @@ static int msm_batt_power_get_property(struct power_supply *psy,
 		val->intval = get_battery_temperature()*10;
 	  break;
 
-	case POWER_SUPPLY_PROP_BATTERY_TEMP_ADC: // ¿Âµµ ADC °ª. 
+	case POWER_SUPPLY_PROP_BATTERY_TEMP_ADC: // ï¿½Âµï¿½ ADC ï¿½ï¿½. 
     if(pseudo_batt_info.mode == 1)
       val->intval = pseudo_batt_info.therm;
     else
@@ -959,7 +959,7 @@ static int msm_batt_power_get_property(struct power_supply *psy,
 #endif
   case POWER_SUPPLY_PROP_SMPL_MODE:
     val->intval = smpl_on;
-    break;
+		break;
 #endif
 	default:
 		return -EINVAL;
@@ -1382,7 +1382,7 @@ static int chg_is_battery_too_hot_or_too_cold(int temp_adc, int batt_level)
             chg_batt_temp_state = CHG_BATT_NORMAL_STATE;
 			if(charging_flow_monitor_enable == 1)
 			{
-				pr_err("%s: BATT TEMP NORMAL (STATE: %d) (thm: %d) (volt: %d)!.\n",
+				pr_debug("%s: BATT TEMP NORMAL (STATE: %d) (thm: %d) (volt: %d)!.\n",
 			  				__func__,CHG_BATT_NORMAL_STATE, temp_adc,batt_level);
             }
 			
@@ -1771,7 +1771,7 @@ static void update_heartbeat(struct work_struct *work)
 		temperature = get_battery_temperature();
 		/* TODO implement JEITA SPEC*/
 #ifdef CONFIG_LGE_CHARGER_TEMP_SCENARIO
-		pr_err("%s: battery temperature is %d celcius)!.\n",__func__,temperature);
+		pr_debug("%s: battery temperature is %d celcius)!.\n",__func__,temperature);
 		temp_adc = get_battery_temperature_adc();
         g_temp_adc = temp_adc;
 		if(pseudo_batt_info.mode == 1)

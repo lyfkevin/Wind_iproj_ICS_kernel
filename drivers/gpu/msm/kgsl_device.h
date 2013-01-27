@@ -336,6 +336,15 @@ void kgsl_device_platform_remove(struct kgsl_device *device);
 
 const char *kgsl_pwrstate_to_str(unsigned int state);
 
+static inline struct kgsl_device_platform_data *
+kgsl_device_get_drvdata(struct kgsl_device *dev)
+{
+	struct platform_device *pdev =
+		container_of(dev->parentdev, struct platform_device, dev);
+
+	return pdev->dev.platform_data;
+}
+
 int kgsl_device_snapshot_init(struct kgsl_device *device);
 int kgsl_device_snapshot(struct kgsl_device *device, int hang);
 void kgsl_device_snapshot_close(struct kgsl_device *device);

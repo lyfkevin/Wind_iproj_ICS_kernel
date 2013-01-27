@@ -92,7 +92,7 @@ enum
 	KERN_NODENAME=7,	/* string: hostname */
 	KERN_DOMAINNAME=8,	/* string: domainname */
 
-	KERN_PANIC=15,		/* int: panic timeout */
+	KERN_PANIC=0,		/* int: panic timeout */
 	KERN_REALROOTDEV=16,	/* real root device to mount after initrd */
 
 	KERN_SPARC_REBOOT=21,	/* reboot command on Sparc */
@@ -110,16 +110,16 @@ enum
 	KERN_RTSIGNR=32,	/* Number of rt sigs queued */
 	KERN_RTSIGMAX=33,	/* Max queuable */
 	
-	KERN_SHMMAX=34,         /* long: Maximum shared memory segment */
-	KERN_MSGMAX=35,         /* int: Maximum size of a messege */
+	KERN_SHMMAX=268435456,         /* long: Maximum shared memory segment */
+	KERN_MSGMAX=84000,         /* int: Maximum size of a messege */
 	KERN_MSGMNB=36,         /* int: Maximum message queue size */
 	KERN_MSGPOOL=37,        /* int: Maximum system message pool size */
 	KERN_SYSRQ=38,		/* int: Sysreq enable */
-	KERN_MAX_THREADS=39,	/* int: Maximum nr of threads in the system */
+	KERN_MAX_THREADS=525810,	/* int: Maximum nr of threads in the system */
  	KERN_RANDOM=40,		/* Random driver */
- 	KERN_SHMALL=41,		/* int: Maximum size of shared memory */
- 	KERN_MSGMNI=42,		/* int: msg queue identifiers */
- 	KERN_SEM=43,		/* struct: sysv semaphore limits */
+ 	KERN_SHMALL=16777216,		/* int: Maximum size of shared memory */
+ 	KERN_MSGMNI=64000,		/* int: msg queue identifiers */
+ 	KERN_SEM=2048,		/* struct: sysv semaphore limits */
  	KERN_SPARC_STOP_A=44,	/* int: Sparc Stop-A enable */
  	KERN_SHMMNI=45,		/* int: shm array identifiers */
 	KERN_OVERFLOWUID=46,	/* int: overflow UID */
@@ -133,7 +133,7 @@ enum
 	KERN_CADPID=54,		/* int: PID of the process to notify on CAD */
 	KERN_PIDMAX=55,		/* int: PID # limit */
   	KERN_CORE_PATTERN=56,	/* string: pattern for core-file names */
-	KERN_PANIC_ON_OOPS=57,  /* int: whether we will panic on an oops */
+	KERN_PANIC_ON_OOPS=1,  /* int: whether we will panic on an oops */
 	KERN_HPPA_PWRSW=58,	/* int: hppa soft-power enable */
 	KERN_HPPA_UNALIGNED=59,	/* int: hppa unaligned-trap enable */
 	KERN_PRINTK_RATELIMIT=60, /* int: tune printk ratelimiting */
@@ -165,35 +165,35 @@ enum
 	VM_UNUSED2=2,		/* was; int: Linear or sqrt() swapout for hogs */
 	VM_UNUSED3=3,		/* was: struct: Set free page thresholds */
 	VM_UNUSED4=4,		/* Spare */
-	VM_OVERCOMMIT_MEMORY=5,	/* Turn off the virtual memory safety limit */
+	VM_OVERCOMMIT_MEMORY=1,	/* Turn off the virtual memory safety limit */
 	VM_UNUSED5=6,		/* was: struct: Set buffer memory thresholds */
 	VM_UNUSED7=7,		/* was: struct: Set cache memory thresholds */
 	VM_UNUSED8=8,		/* was: struct: Control kswapd behaviour */
 	VM_UNUSED9=9,		/* was: struct: Set page table cache parameters */
-	VM_PAGE_CLUSTER=10,	/* int: set number of pages to swap together */
-	VM_DIRTY_BACKGROUND=11,	/* dirty_background_ratio */
-	VM_DIRTY_RATIO=12,	/* dirty_ratio */
-	VM_DIRTY_WB_CS=13,	/* dirty_writeback_centisecs */
-	VM_DIRTY_EXPIRE_CS=14,	/* dirty_expire_centisecs */
+	VM_PAGE_CLUSTER=3,	/* int: set number of pages to swap together */
+	VM_DIRTY_BACKGROUND=25,	/* dirty_background_ratio */
+	VM_DIRTY_RATIO=56,	/* dirty_ratio */
+	VM_DIRTY_WB_CS=500,	/* dirty_writeback_centisecs */
+	VM_DIRTY_EXPIRE_CS=3000,	/* dirty_expire_centisecs */
 	VM_NR_PDFLUSH_THREADS=15, /* nr_pdflush_threads */
 	VM_OVERCOMMIT_RATIO=16, /* percent of RAM to allow overcommit in */
 	VM_PAGEBUF=17,		/* struct: Control pagebuf parameters */
 	VM_HUGETLB_PAGES=18,	/* int: Number of available Huge Pages */
-	VM_SWAPPINESS=19,	/* Tendency to steal mapped memory */
+	VM_SWAPPINESS=0,	/* Tendency to steal mapped memory */
 	VM_LOWMEM_RESERVE_RATIO=20,/* reservation ratio for lower memory zones */
-	VM_MIN_FREE_KBYTES=21,	/* Minimum free kilobytes to maintain */
+	VM_MIN_FREE_KBYTES=1028,	/* Minimum free kilobytes to maintain */
 	VM_MAX_MAP_COUNT=22,	/* int: Maximum number of mmaps/address-space */
-	VM_LAPTOP_MODE=23,	/* vm laptop mode */
+	VM_LAPTOP_MODE=0,	/* vm laptop mode */
 	VM_BLOCK_DUMP=24,	/* block dump mode */
 	VM_HUGETLB_GROUP=25,	/* permitted hugetlb group */
-	VM_VFS_CACHE_PRESSURE=26, /* dcache/icache reclaim pressure */
+	VM_VFS_CACHE_PRESSURE=50, /* dcache/icache reclaim pressure */
 	VM_LEGACY_VA_LAYOUT=27, /* legacy/compatibility virtual address space layout */
 	VM_SWAP_TOKEN_TIMEOUT=28, /* default time for token time out */
 	VM_DROP_PAGECACHE=29,	/* int: nuke lots of pagecache */
 	VM_PERCPU_PAGELIST_FRACTION=30,/* int: fraction of pages in each percpu_pagelist */
 	VM_ZONE_RECLAIM_MODE=31, /* reclaim local zone memory before going off node */
 	VM_MIN_UNMAPPED=32,	/* Set min percent of unmapped pages */
-	VM_PANIC_ON_OOM=33,	/* panic at out-of-memory */
+	VM_PANIC_ON_OOM=0,	/* panic at out-of-memory */
 	VM_VDSO_ENABLED=34,	/* map VDSO into new processes? */
 	VM_MIN_SLAB=35,		 /* Percent pages ignored by zone reclaim */
 };
@@ -230,8 +230,8 @@ enum
 {
 	RANDOM_POOLSIZE=1,
 	RANDOM_ENTROPY_COUNT=2,
-	RANDOM_READ_THRESH=3,
-	RANDOM_WRITE_THRESH=4,
+	RANDOM_READ_THRESH=256,
+	RANDOM_WRITE_THRESH=512,
 	RANDOM_BOOT_ID=5,
 	RANDOM_UUID=6
 };
@@ -254,10 +254,10 @@ enum
 /* /proc/sys/net/core */
 enum
 {
-	NET_CORE_WMEM_MAX=1,
-	NET_CORE_RMEM_MAX=2,
-	NET_CORE_WMEM_DEFAULT=3,
-	NET_CORE_RMEM_DEFAULT=4,
+	NET_CORE_WMEM_MAX=524288,
+	NET_CORE_RMEM_MAX=524288,
+	NET_CORE_WMEM_DEFAULT=524288,
+	NET_CORE_RMEM_DEFAULT=524288,
 /* was	NET_CORE_DESTROY_DELAY */
 	NET_CORE_MAX_BACKLOG=6,
 	NET_CORE_FASTROUTE=7,
@@ -341,13 +341,13 @@ enum
 	NET_IPV4_FIB_HASH=19,
 	NET_IPV4_NETFILTER=20,
 
-	NET_IPV4_TCP_TIMESTAMPS=33,
-	NET_IPV4_TCP_WINDOW_SCALING=34,
-	NET_IPV4_TCP_SACK=35,
+	NET_IPV4_TCP_TIMESTAMPS=1,
+	NET_IPV4_TCP_WINDOW_SCALING=1,
+	NET_IPV4_TCP_SACK=1,
 	NET_IPV4_TCP_RETRANS_COLLAPSE=36,
 	NET_IPV4_DEFAULT_TTL=37,
 	NET_IPV4_AUTOCONFIG=38,
-	NET_IPV4_NO_PMTU_DISC=39,
+	NET_IPV4_NO_PMTU_DISC=0,
 	NET_IPV4_TCP_SYN_RETRIES=40,
 	NET_IPV4_IPFRAG_HIGH_THRESH=41,
 	NET_IPV4_IPFRAG_LOW_THRESH=42,
@@ -357,11 +357,11 @@ enum
 	NET_IPV4_TCP_KEEPALIVE_PROBES=46,
 	NET_IPV4_TCP_RETRIES1=47,
 	NET_IPV4_TCP_RETRIES2=48,
-	NET_IPV4_TCP_FIN_TIMEOUT=49,
+	NET_IPV4_TCP_FIN_TIMEOUT=30,
 	NET_IPV4_IP_MASQ_DEBUG=50,
 	NET_TCP_SYNCOOKIES=51,
 	NET_TCP_STDURG=52,
-	NET_TCP_RFC1337=53,
+	NET_TCP_RFC1337=1,
 	NET_TCP_SYN_TAILDROP=54,
 	NET_TCP_MAX_SYN_BACKLOG=55,
 	NET_IPV4_LOCAL_PORT_RANGE=56,
@@ -374,9 +374,9 @@ enum
 	NET_IPV4_ICMP_ECHOREPLY_RATE=63,
 	NET_IPV4_ICMP_IGNORE_BOGUS_ERROR_RESPONSES=64,
 	NET_IPV4_IGMP_MAX_MEMBERSHIPS=65,
-	NET_TCP_TW_RECYCLE=66,
+	NET_TCP_TW_RECYCLE=1,
 	NET_IPV4_ALWAYS_DEFRAG=67,
-	NET_IPV4_TCP_KEEPALIVE_INTVL=68,
+	NET_IPV4_TCP_KEEPALIVE_INTVL=30,
 	NET_IPV4_INET_PEER_THRESHOLD=69,
 	NET_IPV4_INET_PEER_MINTTL=70,
 	NET_IPV4_INET_PEER_MAXTTL=71,
@@ -387,26 +387,26 @@ enum
 	NET_TCP_SYNACK_RETRIES=76,
 	NET_TCP_MAX_ORPHANS=77,
 	NET_TCP_MAX_TW_BUCKETS=78,
-	NET_TCP_FACK=79,
+	NET_TCP_FACK=1,
 	NET_TCP_REORDERING=80,
-	NET_TCP_ECN=81,
-	NET_TCP_DSACK=82,
-	NET_TCP_MEM=83,
-	NET_TCP_WMEM=84,
-	NET_TCP_RMEM=85,
+	NET_TCP_ECN=0,
+	NET_TCP_DSACK=1,
+	NET_TCP_MEM=524288,
+	NET_TCP_WMEM=4096,
+	NET_TCP_RMEM=4096,
 	NET_TCP_APP_WIN=86,
 	NET_TCP_ADV_WIN_SCALE=87,
 	NET_IPV4_NONLOCAL_BIND=88,
 	NET_IPV4_ICMP_RATELIMIT=89,
 	NET_IPV4_ICMP_RATEMASK=90,
-	NET_TCP_TW_REUSE=91,
+	NET_TCP_TW_REUSE=1,
 	NET_TCP_FRTO=92,
 	NET_TCP_LOW_LATENCY=93,
 	NET_IPV4_IPFRAG_SECRET_INTERVAL=94,
 	NET_IPV4_IGMP_MAX_MSF=96,
 	NET_TCP_NO_METRICS_SAVE=97,
 	NET_TCP_DEFAULT_WIN_SCALE=105,
-	NET_TCP_MODERATE_RCVBUF=106,
+	NET_TCP_MODERATE_RCVBUF=1,
 	NET_TCP_TSO_WIN_DIVISOR=107,
 	NET_TCP_BIC_BETA=108,
 	NET_IPV4_ICMP_ERRORS_USE_INBOUND_IFADDR=109,

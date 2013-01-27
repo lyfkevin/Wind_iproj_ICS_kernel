@@ -90,7 +90,7 @@ static int autofs4_write(struct file *file, const void *addr, int bytes)
 
 	return (bytes > 0);
 }
-	
+
 static void autofs4_notify_daemon(struct autofs_sb_info *sbi,
 				 struct autofs_wait_queue *wq,
 				 int type)
@@ -147,8 +147,7 @@ static void autofs4_notify_daemon(struct autofs_sb_info *sbi,
 	{
 		struct autofs_v5_packet *packet = &pkt.v5_pkt.v5_packet;
 
-		pktsz = sizeof(*packet);
-
+		pktsz = autofs_v5_packet_size(sbi);
 		packet->wait_queue_token = wq->wait_queue_token;
 		packet->len = wq->name.len;
 		memcpy(packet->name, wq->name.name, wq->name.len);

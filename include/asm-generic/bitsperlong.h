@@ -28,5 +28,6 @@
 #error Inconsistent word size. Check asm/bitsperlong.h
 #endif
 
+
 #endif /* __KERNEL__ */
 #endif /* __ASM_GENERIC_BITS_PER_LONG */

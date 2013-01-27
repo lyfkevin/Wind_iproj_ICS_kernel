@@ -13,6 +13,7 @@
 #include <linux/cpu.h>
 
 #include <asm/cacheflush.h>
+
 #include <asm/vfp.h>
 
 #include <mach/msm_rtb.h>

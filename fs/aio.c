@@ -530,7 +530,6 @@ static void aio_fput_routine(struct work_struct *data)
 		spin_lock_irq(&ctx->ctx_lock);
 		really_put_req(ctx, req);
 		spin_unlock_irq(&ctx->ctx_lock);
-
 		put_ioctx(ctx);
 		spin_lock_irq(&fput_lock);
 	}

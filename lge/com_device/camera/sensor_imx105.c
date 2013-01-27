@@ -575,7 +575,7 @@ static int32_t imx105_set_shutter_time(int reg_set, uint16_t gain, uint32_t line
 						intg_time_lsb);
 
 		// register 2 set that separate 1080p preview and norma preview for CTS Test.
-		if(imx105_ctrl->prev_res == RES_PREVIEW_1080)
+		if((int) imx105_ctrl->prev_res == (int) RES_PREVIEW_1080)
 		{
 			
 			CDBG("____  SHUTTER_REGSET PREVIEW MODE IS 1080P _____\n");
