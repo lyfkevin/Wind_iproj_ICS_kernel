@@ -1,0 +1,4 @@
+kernel/drivers/power/power_supply.ko
+kernel/drivers/power/max17040_battery.ko
+kernel/drivers/power/msm_charger.ko
+kernel/drivers/power/pmic8058-charger.ko

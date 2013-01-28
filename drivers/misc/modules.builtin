@@ -1,0 +1,3 @@
+kernel/drivers/misc/pmic8058-pwm.ko
+kernel/drivers/misc/pmic8058-xoadc.ko
+kernel/drivers/misc/qseecom.ko
