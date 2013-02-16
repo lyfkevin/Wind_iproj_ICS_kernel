@@ -2390,7 +2390,7 @@ dhd_cleanup_virt_ifaces(dhd_info_t *dhd)
 static int
 dhd_stop(struct net_device *net)
 {
-	int ifidx;
+	int ifidx = 0;
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(net);
 	DHD_OS_WAKE_LOCK(&dhd->pub);
 	DHD_ERROR(("%s: Enter\n", __FUNCTION__));
