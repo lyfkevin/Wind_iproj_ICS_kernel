@@ -82,7 +82,6 @@
 #include <mach/rpm-regulator.h>
 #include <mach/restart.h>
 #include <mach/board-msm8660.h>
-//#include <linux/msm_tsens.h>
 
 #include "devices.h"
 #include "devices_i_lgu.h"
@@ -117,19 +116,6 @@
 #endif
 #ifdef CONFIG_LGE_WIRELESS_CHARGER_BQ24160
 #include <linux/bq24160-charger.h>
-#endif
-
-#ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
-int set_two_phase_freq(int cpufreq);
-#endif
-#ifdef CONFIG_CPU_FREQ_GOV_INTELLIDEMAND
-int id_set_two_phase_freq(int cpufreq);
-#endif
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE
-int set_two_phase_freq_badass(int cpufreq);
-#endif
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE
-int set_three_phase_freq_badass(int cpufreq);
 #endif
 
 #if 0 /* moved following macros into devices_i_lgu.h */
@@ -473,8 +459,8 @@ static struct regulator_init_data saw_s1_init_data = {
 		.constraints = {
 			.name = "8901_s1",
 			.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
-			.min_uV = 700000,
-			.max_uV = 1450000,
+			.min_uV = 800000,
+			.max_uV = 1325000,
 		},
 		.consumer_supplies = vreg_consumers_8901_S1,
 		.num_consumer_supplies = ARRAY_SIZE(vreg_consumers_8901_S1),
@@ -2502,15 +2488,6 @@ static struct platform_device *early_devices[] __initdata = {
 	&msm_device_dmov_adm1,
 };
 
-/*
-static struct tsens_platform_data pyr_tsens_pdata  = {
-		.tsens_factor		= 1000,
-		.hw_type		= MSM_8660,
-		.tsens_num_sensor	= 6,
-		.slope 		= 702,
-};
-*/
-
 static struct platform_device msm_tsens_device = {
 	.name   = "tsens-tm",
 	.id = -1,
@@ -3074,7 +3051,6 @@ static struct platform_device *surf_devices[] __initdata = {
 	&ion_dev,
 #endif
 	&msm8660_device_watchdog,
-	//&msm8660_cpu_idle_device,
 
 #ifdef CONFIG_ATCMD_VIRTUAL_KBD
 	&atcmd_virtual_kbd_device,
@@ -6476,20 +6452,6 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 			machine_is_msm8x60_fluid() ||
 			machine_is_msm8x60_dragon())
 		msm8x60_init_ebi2();
-
-#ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
-	set_two_phase_freq(1134000);
-#endif
-#ifdef CONFIG_CPU_FREQ_GOV_INTELLIDEMAND
-	id_set_two_phase_freq(1134000);
-#endif
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE
-	set_two_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE_FREQ);
-#endif
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE
-	set_three_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE_FREQ);
-#endif
-
 	msm8x60_init_tlmm();
 	msm8x60_init_gpiomux(board_data->gpiomux_cfgs);
 	msm8x60_init_uart12dm();

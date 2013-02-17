@@ -1083,23 +1083,11 @@ dhd_op_if(dhd_if_t *ifp)
 			DHD_TRACE(("\n%s: got 'DHD_IF_DEL' state\n", __FUNCTION__));
 #ifdef WL_CFG80211
 			if (dhd->dhd_state & DHD_ATTACH_STATE_CFG80211) {
-#ifdef CONFIG_LGE_BCM432X_PATCH
-				wl_cfg80211_ifdel_ops(ifp->net);
-#else
 				wl_cfg80211_notify_ifdel(ifp->net);
-#endif
 			}
 #endif
 			netif_stop_queue(ifp->net);
 			unregister_netdev(ifp->net);
-
-#ifdef CONFIG_LGE_BCM432X_PATCH
-#ifdef WL_CFG80211
-			if (dhd->dhd_state & DHD_ATTACH_STATE_CFG80211) {
-				wl_cfg80211_notify_ifdel();
-			}
-#endif
-#endif	
 			ret = DHD_DEL_IF;	/* Make sure the free_netdev() is called */
 		}
 		break;
@@ -3501,7 +3489,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	char iovbuf[WL_EVENTING_MASK_LEN + 12];	/*  Room for "event_msgs" + '\0' + bitvec  */
 
 	uint up = 0;
-	uint power_mode = PM_FAST;
+	//bill.jung@lge.com - For config file setup
+	//uint power_mode = PM_FAST;
+	//bill.jung@lge.com - For config file setup
 	uint32 dongle_align = DHD_SDALIGN;
 	uint32 glom = 0;
 	uint bcn_timeout = 4;
