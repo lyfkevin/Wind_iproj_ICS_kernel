@@ -574,7 +574,17 @@ static ssize_t show_bios_limit(struct cpufreq_policy *policy, char *buf)
 	return sprintf(buf, "%u\n", policy->cpuinfo.max_freq);
 }
 
+/**
+ * set_scaling_max - change max freq with variables provided
+ */
+ssize_t set_scaling_max(unsigned int new_max, int cpu)
+{
+        struct cpufreq_policy *policy = cpufreq_cpu_get(cpu);
+        char new_max_string[9] = "";
 
+        sprintf(new_max_string, "%d", new_max);
+        return store_scaling_max_freq(policy, new_max_string, 0);
+}
 
 #ifdef CONFIG_CPU_VOLTAGE_TABLE
 
@@ -1294,6 +1304,26 @@ static void cpufreq_out_of_sync(unsigned int cpu, unsigned int old_freq,
 	cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 }
 
+/**
+* cpufreq_quick_get_max - get the CPU frequency (in kHz) from policy->max
+* @cpu: CPU number
+*
+* This is the scaling max freq, without actually getting it from the driver.
+* Return value will be same as what is shown in scaling_max_freq in sysfs.
+*/
+unsigned int cpufreq_quick_get_max(unsigned int cpu)
+{
+	struct cpufreq_policy *policy = cpufreq_cpu_get(cpu);
+	unsigned int ret_freq = 0;
+
+	if (policy) {
+		ret_freq = policy->max;
+		cpufreq_cpu_put(policy);
+	}
+
+	return ret_freq;
+}
+EXPORT_SYMBOL(cpufreq_quick_get_max);
 
 /**
  * cpufreq_quick_get - get the CPU frequency (in kHz) from policy->cur
