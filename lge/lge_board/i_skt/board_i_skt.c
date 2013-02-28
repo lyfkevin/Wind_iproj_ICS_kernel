@@ -82,7 +82,7 @@
 #include <mach/rpm-regulator.h>
 #include <mach/restart.h>
 #include <mach/board-msm8660.h>
-//#include <linux/msm_tsens.h>
+#include <linux/msm_tsens.h>
 
 #include "devices.h"
 #include "devices_i_skt.h"
@@ -2479,20 +2479,20 @@ static struct platform_device *early_devices[] __initdata = {
 	&msm_device_dmov_adm1,
 };
 
-/*
+
 static struct tsens_platform_data pyr_tsens_pdata  = {
 		.tsens_factor		= 1000,
 		.hw_type		= MSM_8660,
 		.tsens_num_sensor	= 6,
 		.slope 		= 702,
 };
-*/
 
+/*
 static struct platform_device msm_tsens_device = {
 	.name   = "tsens-tm",
 	.id = -1,
 };
-
+*/
 
 #ifdef CONFIG_SENSORS_MSM_ADC
 static struct adc_access_fn xoadc_fn = {
@@ -3040,7 +3040,7 @@ static struct platform_device *surf_devices[] __initdata = {
 	&msm_device_rng,
 #endif
 
-	&msm_tsens_device,
+	//&msm_tsens_device,
 	&msm_rpm_device,
 #ifdef CONFIG_ION_MSM
 	&ion_dev,
@@ -6289,7 +6289,7 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	pmic_reset_irq = PM8058_IRQ_BASE + PM8058_RESOUT_IRQ;
 
 
-	//msm_tsens_early_init(&pyr_tsens_pdata);
+	msm_tsens_early_init(&pyr_tsens_pdata);
 
 	/*
 	 * Initialize RPM first as other drivers and devices may need
