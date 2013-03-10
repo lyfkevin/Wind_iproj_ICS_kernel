@@ -549,7 +549,7 @@ static unsigned long uksm_ema_page_time = UKSM_PAGE_TIME_DEFAULT;
  * of the thrashing ratio of all areas. Any area with a bigger thrashing ratio
  * will be considered as having a zero duplication ratio.
  */
-static unsigned int uksm_thrash_threshold = 20;
+static unsigned int uksm_thrash_threshold = 50;
 
 /* How much dedup ratio is considered to be abundant*/
 static unsigned int uksm_abundant_threshold = 10;
