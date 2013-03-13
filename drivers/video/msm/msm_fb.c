@@ -68,9 +68,6 @@ extern int load_565rle_image(char *filename);
 #define MSM_FB_NUM	3
 #endif
 
-//dma completion timeout hang workaround     
-#define DMA_COMP_TIMEOUT_WR  
-                
 static unsigned char *fbram;
 static unsigned char *fbram_phys;
 static int fbram_size;
@@ -2704,27 +2701,12 @@ static int msmfb_overlay_play_wait(struct fb_info *info, unsigned long *argp)
 	return ret;
 }
 
-#ifdef DMA_COMP_TIMEOUT_WR       
-extern int dma_comp_timeout;     
-#endif
-
 static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 {
 	int	ret;
 	struct msmfb_overlay_data req;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct msm_fb_panel_data *pdata;
-
-#ifdef DMA_COMP_TIMEOUT_WR           
-	if(dma_comp_timeout) {       
-		if(mfd->index == 0) {
-			printk(KERN_ERR "%s is called after completion timeout, mfd index = %d...\n", __func__, mfd->index);                                                                         
-			msmfb_overlay_unset(info, argp);
-			printk(KERN_ERR "%s is called again before play, mfd index = %d...\n", __func__, mfd->index);			
-			dma_comp_timeout = 0;
-		}
-	}
-#endif
 
 	if (mfd->overlay_play_enable == 0)	/* nothing to do */
 		return 0;
@@ -3636,4 +3618,3 @@ int __init msm_fb_init(void)
 }
 
 module_init(msm_fb_init);
-

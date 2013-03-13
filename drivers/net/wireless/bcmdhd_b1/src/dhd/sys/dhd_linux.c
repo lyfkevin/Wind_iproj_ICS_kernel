@@ -580,7 +580,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 {
 
 //bill.jung@lge.com - Don't set up filter and Power save mode
-#if 0
+#if 1
 	int power_mode = PM_MAX;
 #endif
 //bill.jung@lge.com - Don't set up filter and Power save mode
@@ -600,7 +600,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				DHD_ERROR(("%s: force extra Suspend setting \n", __FUNCTION__));
 				
 //bill.jung@lge.com - Don't set up filter and Power save mode
-#if 0
+#if 1
 				dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode,
 				                 sizeof(power_mode), TRUE, 0);
 
@@ -628,7 +628,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				DHD_TRACE(("%s: Remove extra suspend setting \n", __FUNCTION__));
 				
 //bill.jung@lge.com - Don't set up filter and Power save mode
-#if 0
+#if 1
 				power_mode = PM_FAST;
 				dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode,
 				                 sizeof(power_mode), TRUE, 0);
@@ -2378,7 +2378,7 @@ dhd_cleanup_virt_ifaces(dhd_info_t *dhd)
 static int
 dhd_stop(struct net_device *net)
 {
-	int ifidx = 0;
+	int ifidx;
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(net);
 	DHD_OS_WAKE_LOCK(&dhd->pub);
 	DHD_ERROR(("%s: Enter\n", __FUNCTION__));
@@ -2672,9 +2672,9 @@ dhd_osl_detach(osl_t *osh)
 		DHD_ERROR(("%s: MEMORY LEAK %d bytes\n", __FUNCTION__, MALLOCED(osh)));
 	}
 	osl_detach(osh);
-#if 1 && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+	DHD_ERROR(("%s: Release dhd_registration_sem\n", __FUNCTION__));
 	up(&dhd_registration_sem);
-	up(&dhd_chipup_sem);
 #endif
 }
 
@@ -3489,9 +3489,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	char iovbuf[WL_EVENTING_MASK_LEN + 12];	/*  Room for "event_msgs" + '\0' + bitvec  */
 
 	uint up = 0;
-	//bill.jung@lge.com - For config file setup
-	//uint power_mode = PM_FAST;
-	//bill.jung@lge.com - For config file setup
+	uint power_mode = PM_FAST;
 	uint32 dongle_align = DHD_SDALIGN;
 	uint32 glom = 0;
 	uint bcn_timeout = 4;
@@ -3691,24 +3689,20 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 			dhd->mac.octet[3], dhd->mac.octet[4], dhd->mac.octet[5]));
 
 	/* Set Country code  */
-	//bill.jung@lge.com - For config file setup
-	/*
 	if (dhd->dhd_cspec.ccode[0] != 0) {
 		bcm_mkiovar("country", (char *)&dhd->dhd_cspec,
 			sizeof(wl_country_t), iovbuf, sizeof(iovbuf));
 		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0)) < 0)
 			DHD_ERROR(("%s: country code setting failed\n", __FUNCTION__));
 	}
-	*/
+
 	/* Set Listen Interval */
 	bcm_mkiovar("assoc_listen", (char *)&listen_interval, 4, iovbuf, sizeof(iovbuf));
 	if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0)) < 0)
 		DHD_ERROR(("%s assoc_listen failed %d\n", __FUNCTION__, ret));
 
 	/* Set PowerSave mode */
-	//bill.jung@lge.com - For config file setup
-	//dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode, sizeof(power_mode), TRUE, 0);
-	//bill.jung@lge.com - For config file setup
+	dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode, sizeof(power_mode), TRUE, 0);
 
 	/* Match Host and Dongle rx alignment */
 	bcm_mkiovar("bus:txglomalign", (char *)&dongle_align, 4, iovbuf, sizeof(iovbuf));
@@ -4431,15 +4425,6 @@ dhd_module_init(void)
 		wl_android_wifictrl_func_del();
 #endif /* defined(CONFIG_WIFI_CONTROL_FUNC) */
 		dhd_customer_gpio_wlan_ctrl(WLAN_POWER_OFF);
-
-#ifdef CONFIG_PRODUCT_I_ATNT		// bluetooth.kang
-		if( get_ext_cable_type_value() == LT_CABLE_56K || get_ext_cable_type_value() == LT_CABLE_130K  )
-		{
-			DHD_ERROR(("SKIP power on retry when PIF Attached"));
-			break;
-		}
-#endif
-
 	} while (retry-- > 0);
 
 	if (!chip_up) {
@@ -5079,22 +5064,13 @@ int net_os_set_packet_filter(struct net_device *dev, int val)
 	return ret;
 }
 
-#ifdef CONFIG_LGE_BCM432X_PATCH
-int
-dhd_dev_init_ioctl(struct net_device *dev)
-#else
+
 void
 dhd_dev_init_ioctl(struct net_device *dev)
-#endif
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 
-#ifdef CONFIG_LGE_BCM432X_PATCH
-	return dhd_preinit_ioctls(&dhd->pub);
-#else
-
 	dhd_preinit_ioctls(&dhd->pub);
-#endif
 }
 
 #ifdef PNO_SUPPORT
@@ -5152,10 +5128,8 @@ int net_os_send_hang_message(struct net_device *dev)
 #endif
 #if defined(WL_CFG80211)
 			ret = wl_cfg80211_hang(dev, WLAN_REASON_UNSPECIFIED);
-#ifndef CONFIG_LGE_BCM432X_PATCH
 			dev_close(dev);
 			dev_open(dev);
-#endif
 #endif
 		}
 	}
@@ -5294,7 +5268,7 @@ int dhd_os_wake_lock_timeout(dhd_pub_t *pub)
 #ifdef CONFIG_HAS_WAKELOCK
 		if (dhd->wakelock_timeout_enable)
 			wake_lock_timeout(&dhd->wl_rxwake,
-				msecs_to_jiffies(dhd->wakelock_timeout_enable / 2));
+				msecs_to_jiffies(dhd->wakelock_timeout_enable));
 #endif
 		dhd->wakelock_timeout_enable = 0;
 		spin_unlock_irqrestore(&dhd->wakelock_spinlock, flags);

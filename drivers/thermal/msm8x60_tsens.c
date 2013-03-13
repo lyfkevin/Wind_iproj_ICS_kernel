@@ -40,11 +40,11 @@ enum tsens_trip_type {
 #define TSENS_CAL_DEGC					30
 #define TSENS_MAIN_SENSOR				0
 
-#define TSENS_8960_QFPROM_ADDR0		(MSM_QFPROM_BASE + 0x000000bc)
+#define TSENS_8960_QFPROM_ADDR0		(MSM_QFPROM_BASE + 0x00000404)
 #define TSENS_8960_QFPROM_SPARE_ADDR0	(MSM_QFPROM_BASE + 0x00000414)
 #define TSENS_8960_CONFIG				0x9b
-#define TSENS_8960_CONFIG_SHIFT        28
-#define TSENS_8960_CONFIG_MASK    (3 << TSENS_8960_CONFIG_SHIFT)
+#define TSENS_8960_CONFIG_SHIFT				0
+#define TSENS_8960_CONFIG_MASK		(0xf << TSENS_8960_CONFIG_SHIFT)
 #define TSENS_CNTL_ADDR			(MSM_CLK_CTL_BASE + 0x00003620)
 #define TSENS_EN					BIT(0)
 #define TSENS_SW_RST					BIT(1)
@@ -61,7 +61,7 @@ enum tsens_trip_type {
 #define TSENS_UPPER_STATUS_CLR				BIT(10)
 #define TSENS_MAX_STATUS_MASK				BIT(11)
 #define TSENS_MEASURE_PERIOD				4 /* 1 sec. default */
-#define TSENS_8960_SLP_CLK_ENA				BIT(24)
+#define TSENS_8960_SLP_CLK_ENA				BIT(26)
 
 #define TSENS_THRESHOLD_ADDR		(MSM_CLK_CTL_BASE + 0x00003624)
 #define TSENS_THRESHOLD_MAX_CODE			0xff
@@ -134,8 +134,6 @@ struct tsens_tm_device {
 
 struct tsens_tm_device *tmdev;
 
-static unsigned int tsens_log_count = 0;
-
 /* Temperature on y axis and ADC-code on x-axis */
 static int tsens_tz_code_to_degC(int adc_code, int sensor_num)
 {
@@ -182,11 +180,6 @@ static void tsens8x60_get_temp(int sensor_num, unsigned long *temp)
 	code = readl_relaxed(TSENS_S0_STATUS_ADDR +
 			(sensor_num << TSENS_STATUS_ADDR_OFFSET));
 	*temp = tsens_tz_code_to_degC(code, sensor_num);
-	tsens_log_count++;
-	if ((tsens_log_count % 20) == 0) {
-		pr_warn("TSENS: Current CPU Temperature is: %lu\n", *temp);
-		tsens_log_count = 0;
-	}
 }
 
 static int tsens_tz_get_temp(struct thermal_zone_device *thermal,
@@ -194,10 +187,8 @@ static int tsens_tz_get_temp(struct thermal_zone_device *thermal,
 {
 	struct tsens_tm_device_sensor *tm_sensor = thermal->devdata;
 
-	if (!tm_sensor || tm_sensor->mode != THERMAL_DEVICE_ENABLED || !temp) {
-		pr_err("TSENS: TZ get temp failed!\n");
+	if (!tm_sensor || tm_sensor->mode != THERMAL_DEVICE_ENABLED || !temp)
 		return -EINVAL;
-	}
 
 	tsens8x60_get_temp(tm_sensor->sensor_num, temp);
 
@@ -206,10 +197,8 @@ static int tsens_tz_get_temp(struct thermal_zone_device *thermal,
 
 int tsens_get_temp(struct tsens_device *device, unsigned long *temp)
 {
-	if (!tmdev) {
-		pr_err("TSENS: get temp failed!\n");
+	if (!tmdev)
 		return -ENODEV;
-	}
 
 	tsens8x60_get_temp(device->sensor_num, temp);
 
@@ -877,7 +866,6 @@ module_init(tsens_tm_init);
 module_exit(tsens_tm_remove);
 
 MODULE_LICENSE("GPL v2");
-MODULE_DESCRIPTION("MSM8x60 Temperature Sensor driver");
+MODULE_DESCRIPTION("MSM8960 Temperature Sensor driver");
 MODULE_VERSION("1.0");
-MODULE_ALIAS("platform:tsens8x60-tm");
-
+MODULE_ALIAS("platform:tsens8960-tm");

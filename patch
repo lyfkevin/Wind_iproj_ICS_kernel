@@ -1,0 +1,1078 @@
+From 974860c25c21e221ea87652b131a3ba8afc8781d Mon Sep 17 00:00:00 2001
+From: yiuflin <yiuflin@gmail.com>
+Date: Sun, 27 Jan 2013 23:17:41 +0800
+Subject: [PATCH] merge minor fixes from LGE p930 source
+
+---
+ drivers/gpu/msm/kgsl.c                             |   12 +-
+ drivers/gpu/msm/kgsl_device.h                      |    2 +
+ drivers/gpu/msm/kgsl_pwrctrl.c                     |   21 +-
+ drivers/media/video/msm/msm_camera.c               |    2 +-
+ drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd.h   |    4 +
+ .../bcmdhd_b1/src/dhd/sys/dhd_custom_gpio.c        |   49 ++++
+ .../net/wireless/bcmdhd_b1/src/dhd/sys/dhd_linux.c |   52 +++-
+ .../net/wireless/bcmdhd_b1/src/dhd/sys/dhd_sdio.c  |    5 +
+ .../net/wireless/bcmdhd_b1/src/shared/linux_osl.c  |   19 ++
+ drivers/power/msm_charger.c                        |   19 +-
+ drivers/video/msm/mdp4_overlay_dsi_video.c         |  253 +++++++++++++++++++-
+ drivers/video/msm/mdp4_util.c                      |   22 +-
+ drivers/video/msm/mipi_dsi_host.c                  |   24 +-
+ drivers/video/msm/msm_fb.c                         |   19 ++
+ lge/com_device/input/apds9900.c                    |    3 +-
+ lge/lge_board/i_atnt/board_i_atnt.c                |    9 +-
+ lge/lge_board/i_atnt/devices_i_atnt.c              |   12 +
+ 17 files changed, 471 insertions(+), 56 deletions(-)
+
+diff --git a/drivers/gpu/msm/kgsl.c b/drivers/gpu/msm/kgsl.c
+index 4a268ed..f4092b7 100644
+--- a/drivers/gpu/msm/kgsl.c
++++ b/drivers/gpu/msm/kgsl.c
+@@ -514,8 +514,9 @@ void kgsl_late_resume_driver(struct early_suspend *h)
+ 					struct kgsl_device, display_off);
+ 	KGSL_PWR_WARN(device, "late resume start\n");
+ 	mutex_lock(&device->mutex);
+-	kgsl_pwrctrl_wake(device);
++	//kgsl_pwrctrl_wake(device);
+ 	device->pwrctrl.restore_slumber = 0;
++	kgsl_pwrctrl_wake(device);
+ 	kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_TURBO);
+ 	mutex_unlock(&device->mutex);
+ 	kgsl_check_idle(device);
+@@ -2237,9 +2238,12 @@ void kgsl_unregister_device(struct kgsl_device *device)
+ 	if (ret != 0)
+ 		goto err_close_mmu;
+ 
+-	if (cpu_is_msm8x60())
+-		wake_lock_init(&device->idle_wakelock,
+-					   WAKE_LOCK_IDLE, device->name);
++//	if (cpu_is_msm8x60())
++//		wake_lock_init(&device->idle_wakelock,
++//					   WAKE_LOCK_IDLE, device->name);
++	wake_lock_init(&device->idle_wakelock, WAKE_LOCK_IDLE, device->name);
++	pm_qos_add_request(&device->pm_qos_req_dma, PM_QOS_CPU_DMA_LATENCY,
++	                        PM_QOS_DEFAULT_VALUE);
+ 
+ 	idr_init(&device->context_idr);
+ 
+diff --git a/drivers/gpu/msm/kgsl_device.h b/drivers/gpu/msm/kgsl_device.h
+index f886911..da7dbbe 100644
+--- a/drivers/gpu/msm/kgsl_device.h
++++ b/drivers/gpu/msm/kgsl_device.h
+@@ -15,6 +15,7 @@
+ 
+ #include <linux/idr.h>
+ #include <linux/wakelock.h>
++#include <linux/pm_qos_params.h>
+ #include <linux/earlysuspend.h>
+ 
+ #include "kgsl.h"
+@@ -184,6 +185,7 @@ struct kgsl_device {
+ 	struct wake_lock idle_wakelock;
+ 	struct kgsl_pwrscale pwrscale;
+ 	struct kobject pwrscale_kobj;
++	struct pm_qos_request_list pm_qos_req_dma;
+ 	struct work_struct ts_expired_ws;
+ 	struct list_head events;
+ 	s64 on_time;
+diff --git a/drivers/gpu/msm/kgsl_pwrctrl.c b/drivers/gpu/msm/kgsl_pwrctrl.c
+index 3a78d46..637d8d6 100644
+--- a/drivers/gpu/msm/kgsl_pwrctrl.c
++++ b/drivers/gpu/msm/kgsl_pwrctrl.c
+@@ -25,6 +25,7 @@
+ #define KGSL_PWRFLAGS_AXI_ON   2
+ #define KGSL_PWRFLAGS_IRQ_ON   3
+ 
++#define GPU_SWFI_LATENCY       3
+ #define UPDATE_BUSY_VAL		1000000
+ #define UPDATE_BUSY		50
+ 
+@@ -786,8 +787,11 @@ void kgsl_check_suspended(struct kgsl_device *device)
+ 		//kgsl_pwrctrl_clk(device, KGSL_PWRFLAGS_OFF);
+ 		kgsl_pwrctrl_clk(device, KGSL_PWRFLAGS_OFF, KGSL_STATE_SLEEP);
+ 		kgsl_pwrctrl_set_state(device, KGSL_STATE_SLEEP);
+-		if (device->idle_wakelock.name)
+-			wake_unlock(&device->idle_wakelock);
++//		if (device->idle_wakelock.name)
++//			wake_unlock(&device->idle_wakelock);
++		wake_unlock(&device->idle_wakelock);
++		pm_qos_update_request(&device->pm_qos_req_dma,
++		                        PM_QOS_DEFAULT_VALUE);
+ 		break;
+ 	case KGSL_STATE_SLEEP:
+ 	case KGSL_STATE_SLUMBER:
+@@ -815,13 +819,16 @@ void kgsl_check_suspended(struct kgsl_device *device)
+ 	case KGSL_STATE_SLEEP:
+ 		del_timer_sync(&device->idle_timer);
+ 		kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_NOMINAL);
++		device->pwrctrl.restore_slumber = true;
+ 		device->ftbl->suspend_context(device);
+ 		device->ftbl->stop(device);
+-		device->pwrctrl.restore_slumber = true;
++		//device->pwrctrl.restore_slumber = true;
+ 		_sleep_accounting(device);
+ 		kgsl_pwrctrl_set_state(device, KGSL_STATE_SLUMBER);
+ 		if (device->idle_wakelock.name)
+ 			wake_unlock(&device->idle_wakelock);
++		pm_qos_update_request(&device->pm_qos_req_dma,
++							PM_QOS_DEFAULT_VALUE);
+ 		break;
+ 	case KGSL_STATE_SLUMBER:
+ 		break;
+@@ -892,8 +899,12 @@ void kgsl_pwrctrl_wake(struct kgsl_device *device)
+ 		mod_timer(&device->idle_timer,
+ 				jiffies + device->pwrctrl.interval_timeout);
+ 
+-		if (device->idle_wakelock.name)
+-			wake_lock(&device->idle_wakelock);
++		//if (device->idle_wakelock.name)
++		//	wake_lock(&device->idle_wakelock);
++		wake_lock(&device->idle_wakelock);
++		if (device->pwrctrl.restore_slumber == false)
++			pm_qos_update_request(&device->pm_qos_req_dma,
++							GPU_SWFI_LATENCY);
+ 	case KGSL_STATE_ACTIVE:
+ 		break;
+ 	default:
+diff --git a/drivers/media/video/msm/msm_camera.c b/drivers/media/video/msm/msm_camera.c
+index 91bd696..cd41484 100755
+--- a/drivers/media/video/msm/msm_camera.c
++++ b/drivers/media/video/msm/msm_camera.c
+@@ -238,7 +238,7 @@ static void msm_enqueue_vpe(struct msm_device_queue *queue,
+ 	struct msm_device_queue *__q = (queue);			\
+ 	struct msm_queue_cmd *qcmd;				\
+ 	spin_lock_irqsave(&__q->lock, flags);			\
+-	while (!list_empty(&__q->list)) {			\
++	while (!list_empty(&__q->list) && (__q->len > 0)) {			\
+ 		__q->len--;					\
+ 		qcmd = list_first_entry(&__q->list,		\
+ 			struct msm_queue_cmd, member);		\
+diff --git a/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd.h b/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd.h
+index a97a54a..60357f6 100755
+--- a/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd.h
++++ b/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd.h
+@@ -88,8 +88,12 @@ enum dhd_bus_state {
+ #define POWERUP_MAX_RETRY	(10) /* how many times we retry to power up the chip */
+ #endif
+ #ifndef POWERUP_WAIT_MS
++#ifdef CONFIG_LGE_BCM432X_PATCH
++#define POWERUP_WAIT_MS		(4000) /* ms: time out in waiting wifi to come up */
++#else
+ #define POWERUP_WAIT_MS		(2000) /* ms: time out in waiting wifi to come up */
+ #endif
++#endif
+ 
+ enum dhd_bus_wake_state {
+ 	WAKE_LOCK_OFF,
+diff --git a/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_custom_gpio.c b/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_custom_gpio.c
+index cb0978f..f1a2f4d 100755
+--- a/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_custom_gpio.c
++++ b/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_custom_gpio.c
+@@ -269,6 +269,55 @@ int dhd_customer_oob_irq_map(unsigned long *irq_flags_ptr)
+ 	{"TR", "TR", 0},
+ 	{"NO", "NO", 0},
+ #endif /* EXMAPLE_TABLE */
++#if defined (CONFIG_PRODUCT_I_ATNT) || defined(CONFIG_PRODUCT_I_BELL) || defined(CONFIG_PRODUCT_J_TLS)
++	{"AE", "AE", 1},
++	{"AR", "AR", 1},
++	{"AT", "AT", 1},
++	{"AU", "AU", 2},
++	{"BE", "BE", 1},
++	{"BG", "BG", 1},
++	{"BN", "BN", 1},
++	{"CA", "CA", 2},
++	{"CH", "CH", 1},
++	{"CY", "CY", 1},
++	{"CZ", "CZ", 1},
++	{"DE", "DE", 3},
++	{"DK", "DK", 1},
++	{"EE", "EE", 1},
++	{"ES", "ES", 1},
++	{"FI", "FI", 1},
++	{"FR", "FR", 1},
++	{"GB", "GB", 1},
++	{"GR", "GR", 1},
++	{"HR", "HR", 1},
++	{"HU", "HU", 1},
++	{"IE", "IE", 1},
++	{"IS", "IS", 1},
++	{"IT", "IT", 1},
++	{"JP", "JP", 5},
++	{"KR", "KR", 3},
++	{"KW", "KW", 1},
++	{"LI", "LI", 1},
++	{"LT", "LT", 1},
++	{"LU", "LU", 1},
++	{"LV", "LV", 1},
++	{"MA", "MA", 1},
++	{"MT", "MT", 1},
++	{"MX", "MX", 1},
++	{"NL", "NL", 1},
++	{"NO", "NO", 1},
++	{"PL", "PL", 1},
++	{"PT", "PT", 1},
++	{"PY", "PY", 1},
++	{"RO", "RO", 1},
++	{"SE", "SE", 1},
++	{"SI", "SI", 1},
++	{"SK", "SK", 1},
++	{"TR", "TR", 7},
++	{"TW", "TW", 2},
++	{"RU", "RU", 1},
++	{"US", "US", 5}
++#endif
+ };
+ 
+ 
+diff --git a/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_linux.c b/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_linux.c
+index 0680273..990c0f1 100644
+--- a/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_linux.c
++++ b/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_linux.c
+@@ -580,7 +580,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
+ {
+ 
+ //bill.jung@lge.com - Don't set up filter and Power save mode
+-#if 1
++#if 0
+ 	int power_mode = PM_MAX;
+ #endif
+ //bill.jung@lge.com - Don't set up filter and Power save mode
+@@ -600,7 +600,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
+ 				DHD_ERROR(("%s: force extra Suspend setting \n", __FUNCTION__));
+ 				
+ //bill.jung@lge.com - Don't set up filter and Power save mode
+-#if 1
++#if 0
+ 				dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode,
+ 				                 sizeof(power_mode), TRUE, 0);
+ 
+@@ -628,7 +628,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
+ 				DHD_TRACE(("%s: Remove extra suspend setting \n", __FUNCTION__));
+ 				
+ //bill.jung@lge.com - Don't set up filter and Power save mode
+-#if 1
++#if 0
+ 				power_mode = PM_FAST;
+ 				dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode,
+ 				                 sizeof(power_mode), TRUE, 0);
+@@ -1083,11 +1083,23 @@ struct net_device * dhd_idx2net(void *pub, int ifidx)
+ 			DHD_TRACE(("\n%s: got 'DHD_IF_DEL' state\n", __FUNCTION__));
+ #ifdef WL_CFG80211
+ 			if (dhd->dhd_state & DHD_ATTACH_STATE_CFG80211) {
++#ifdef CONFIG_LGE_BCM432X_PATCH
++				wl_cfg80211_ifdel_ops(ifp->net);
++#else
+ 				wl_cfg80211_notify_ifdel(ifp->net);
++#endif
+ 			}
+ #endif
+ 			netif_stop_queue(ifp->net);
+ 			unregister_netdev(ifp->net);
++
++#ifdef CONFIG_LGE_BCM432X_PATCH
++#ifdef WL_CFG80211
++			if (dhd->dhd_state & DHD_ATTACH_STATE_CFG80211) {
++				wl_cfg80211_notify_ifdel();
++			}
++#endif
++#endif	
+ 			ret = DHD_DEL_IF;	/* Make sure the free_netdev() is called */
+ 		}
+ 		break;
+@@ -2672,9 +2684,9 @@ int dhd_do_driver_init(struct net_device *net)
+ 		DHD_ERROR(("%s: MEMORY LEAK %d bytes\n", __FUNCTION__, MALLOCED(osh)));
+ 	}
+ 	osl_detach(osh);
+-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+-	DHD_ERROR(("%s: Release dhd_registration_sem\n", __FUNCTION__));
++#if 1 && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+ 	up(&dhd_registration_sem);
++	up(&dhd_chipup_sem);
+ #endif
+ }
+ 
+@@ -3689,20 +3701,24 @@ static int dhd_get_curr_etheraddr(dhd_pub_t *dhd, char* macaddr)
+ 			dhd->mac.octet[3], dhd->mac.octet[4], dhd->mac.octet[5]));
+ 
+ 	/* Set Country code  */
++	//bill.jung@lge.com - For config file setup
++	/*
+ 	if (dhd->dhd_cspec.ccode[0] != 0) {
+ 		bcm_mkiovar("country", (char *)&dhd->dhd_cspec,
+ 			sizeof(wl_country_t), iovbuf, sizeof(iovbuf));
+ 		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0)) < 0)
+ 			DHD_ERROR(("%s: country code setting failed\n", __FUNCTION__));
+ 	}
+-
++	*/
+ 	/* Set Listen Interval */
+ 	bcm_mkiovar("assoc_listen", (char *)&listen_interval, 4, iovbuf, sizeof(iovbuf));
+ 	if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0)) < 0)
+ 		DHD_ERROR(("%s assoc_listen failed %d\n", __FUNCTION__, ret));
+ 
+ 	/* Set PowerSave mode */
+-	dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode, sizeof(power_mode), TRUE, 0);
++	//bill.jung@lge.com - For config file setup
++	//dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode, sizeof(power_mode), TRUE, 0);
++	//bill.jung@lge.com - For config file setup
+ 
+ 	/* Match Host and Dongle rx alignment */
+ 	bcm_mkiovar("bus:txglomalign", (char *)&dongle_align, 4, iovbuf, sizeof(iovbuf));
+@@ -4425,6 +4441,15 @@ void dhd_detach(dhd_pub_t *dhdp)
+ 		wl_android_wifictrl_func_del();
+ #endif /* defined(CONFIG_WIFI_CONTROL_FUNC) */
+ 		dhd_customer_gpio_wlan_ctrl(WLAN_POWER_OFF);
++
++#ifdef CONFIG_PRODUCT_I_ATNT		// bluetooth.kang
++		if( get_ext_cable_type_value() == LT_CABLE_56K || get_ext_cable_type_value() == LT_CABLE_130K  )
++		{
++			DHD_ERROR(("SKIP power on retry when PIF Attached"));
++			break;
++		}
++#endif
++
+ 	} while (retry-- > 0);
+ 
+ 	if (!chip_up) {
+@@ -5064,13 +5089,22 @@ int net_os_set_packet_filter(struct net_device *dev, int val)
+ 	return ret;
+ }
+ 
+-
++#ifdef CONFIG_LGE_BCM432X_PATCH
++int
++dhd_dev_init_ioctl(struct net_device *dev)
++#else
+ void
+ dhd_dev_init_ioctl(struct net_device *dev)
++#endif
+ {
+ 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+ 
++#ifdef CONFIG_LGE_BCM432X_PATCH
++	return dhd_preinit_ioctls(&dhd->pub);
++#else
++
+ 	dhd_preinit_ioctls(&dhd->pub);
++#endif
+ }
+ 
+ #ifdef PNO_SUPPORT
+@@ -5128,9 +5162,11 @@ int net_os_send_hang_message(struct net_device *dev)
+ #endif
+ #if defined(WL_CFG80211)
+ 			ret = wl_cfg80211_hang(dev, WLAN_REASON_UNSPECIFIED);
++#ifndef CONFIG_LGE_BCM432X_PATCH
+ 			dev_close(dev);
+ 			dev_open(dev);
+ #endif
++#endif
+ 		}
+ 	}
+ 	return ret;
+diff --git a/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_sdio.c b/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_sdio.c
+index 326392a..2a866ba 100644
+--- a/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_sdio.c
++++ b/drivers/net/wireless/bcmdhd_b1/src/dhd/sys/dhd_sdio.c
+@@ -3604,6 +3604,11 @@ enum {
+ 	dhdsdio_clkctl(bus, CLK_AVAIL, FALSE);
+ 	if (bus->clkstate != CLK_AVAIL) {
+ 		DHD_ERROR(("%s: clock state is wrong. state = %d\n", __FUNCTION__, bus->clkstate));
++#ifdef CONFIG_LGE_BCM432X_PATCH
++/* LGE_PATCH_S */
++		ret = BCME_SDIO_ERROR;
++/* LGE_PATCH_E */
++#endif
+ 		goto exit;
+ 	}
+ 
+diff --git a/drivers/net/wireless/bcmdhd_b1/src/shared/linux_osl.c b/drivers/net/wireless/bcmdhd_b1/src/shared/linux_osl.c
+index ef9c733..f6c654d 100755
+--- a/drivers/net/wireless/bcmdhd_b1/src/shared/linux_osl.c
++++ b/drivers/net/wireless/bcmdhd_b1/src/shared/linux_osl.c
+@@ -64,7 +64,11 @@
+ 
+ typedef struct bcm_static_pkt {
+ 	struct sk_buff *skb_4k[STATIC_PKT_MAX_NUM];
++#ifdef CONFIG_LGE_BCM432X_PATCH
++	struct sk_buff *skb_12k[STATIC_PKT_MAX_NUM];
++#else
+ 	struct sk_buff *skb_8k[STATIC_PKT_MAX_NUM];
++#endif
+ 	struct semaphore osl_pkt_sem;
+ 	unsigned char pkt_use[STATIC_PKT_MAX_NUM * 2];
+ } bcm_static_pkt_t;
+@@ -631,10 +635,17 @@ struct sk_buff * BCMFASTPATH
+ 	int i = 0;
+ 	struct sk_buff *skb;
+ 
++#ifdef CONFIG_LGE_BCM432X_PATCH
++	if (len > (PAGE_SIZE*3)) {
++		printk("%s: attempt to allocate huge packet (0x%x)\n", __FUNCTION__, len);
++		return osl_pktget(osh, len);
++	}
++#else
+ 	if (len > (PAGE_SIZE*2)) {
+ 		printk("%s: attempt to allocate huge packet (0x%x)\n", __FUNCTION__, len);
+ 		return osl_pktget(osh, len);
+ 	}
++#endif
+ 
+ 	down(&bcm_static_skb->osl_pkt_sem);
+ 
+@@ -663,7 +674,11 @@ struct sk_buff * BCMFASTPATH
+ 	if (i != STATIC_PKT_MAX_NUM) {
+ 		bcm_static_skb->pkt_use[i+STATIC_PKT_MAX_NUM] = 1;
+ 		up(&bcm_static_skb->osl_pkt_sem);
++#ifdef CONFIG_LGE_BCM432X_PATCH
++		skb = bcm_static_skb->skb_12k[i];
++#else
+ 		skb = bcm_static_skb->skb_8k[i];
++#endif
+ 		skb->tail = skb->data + len;
+ 		skb->len = len;
+ 		return skb;
+@@ -689,7 +704,11 @@ struct sk_buff * BCMFASTPATH
+ 	}
+ 
+ 	for (i = 0; i < STATIC_PKT_MAX_NUM; i++) {
++#ifdef CONFIG_LGE_BCM432X_PATCH
++		if (p == bcm_static_skb->skb_12k[i]) {
++#else
+ 		if (p == bcm_static_skb->skb_8k[i]) {
++#endif
+ 			down(&bcm_static_skb->osl_pkt_sem);
+ 			bcm_static_skb->pkt_use[i + STATIC_PKT_MAX_NUM] = 0;
+ 			up(&bcm_static_skb->osl_pkt_sem);
+diff --git a/drivers/power/msm_charger.c b/drivers/power/msm_charger.c
+index 5136415..27b855c 100644
+--- a/drivers/power/msm_charger.c
++++ b/drivers/power/msm_charger.c
+@@ -137,10 +137,8 @@ struct msm_charger_mux {
+ 	struct delayed_work teoc_work;
+ 
+ 	unsigned int update_time;
+-	unsigned int processing_delay; /* [LGE_UPDAET : for battery remove] */
+ 	int stop_update;
+ 	struct delayed_work update_heartbeat_work;
+-	struct delayed_work update_batt_remove_work;  /* [LGE_UPDAET : for battery remove] */
+ 
+ 	struct mutex status_lock;
+ 	enum msm_battery_status batt_status;
+@@ -2024,8 +2022,11 @@ static void handle_charger_removed(struct msm_hardware_charger_priv
+ }
+ 
+ /* [LGE_UPDAET_S : for battery remove] */
++#if !defined(CONFIG_MACH_LGE_I_BOARD_DCM)
+ extern void pm8058_chg_batt_remove_and_reset(void);
+-static void update_battery_remove_work(struct work_struct *work)
++#endif
++
++static void update_battery_remove(void)
+ {
+   if(msm_batt_gauge->get_battery_temperature_adc() < 2000)
+   {
+@@ -2034,7 +2035,10 @@ static void update_battery_remove_work(struct work_struct *work)
+   else
+   {
+     printk(KERN_ERR "================== [ update_battery_remove_work ] BATTERY REMOVED!!!! =======================\n");
++
++#if !defined(CONFIG_MACH_LGE_I_BOARD_DCM)
+     pm8058_chg_batt_remove_and_reset();
++#endif
+   }
+ }
+ /* [LGE_UPDAET_E : for battery remove] */
+@@ -2222,10 +2226,7 @@ static void handle_event(struct msm_hardware_charger *hw_chg, int event)
+ //#ifdef CONFIG_LGE_PM_BATTERY_ALARM
+ 	case CHG_BATT_REMOVE_EVENT:
+ 		printk(KERN_DEBUG "############ Handle Event: [CHG_BATT_REMOVE_EVENT] #####################\n");
+-		queue_delayed_work(msm_chg.event_wq_thread,
+-				&msm_chg.update_batt_remove_work,
+-			      round_jiffies_relative(msecs_to_jiffies
+-						     (msm_chg.processing_delay)));
++		update_battery_remove();
+ 		break;
+ //#endif
+ /* [LGE_UPDAET_E : for battery remove] */
+@@ -2779,11 +2780,11 @@ static int __devinit msm_charger_probe(struct platform_device *pdev)
+ 		msm_chg.get_batt_capacity_percent =
+ 		    msm_chg_get_batt_capacity_percent;
+ 
+-	msm_chg.processing_delay = 1000;  /* [LGE_UPDAET : for battery remove] */
++
+ 	mutex_init(&msm_chg.status_lock);
+ 	INIT_DELAYED_WORK(&msm_chg.teoc_work, teoc);
+ 	INIT_DELAYED_WORK(&msm_chg.update_heartbeat_work, update_heartbeat);
+-	INIT_DELAYED_WORK(&msm_chg.update_batt_remove_work, update_battery_remove_work);  /* [LGE_UPDAET : for battery remove] */
++
+ 
+ /* [LGE_UPDATE_S kyungho.kong@lge.com] */
+ #ifdef CONFIG_LGE_PM_TEMPERATURE_MONITOR
+diff --git a/drivers/video/msm/mdp4_overlay_dsi_video.c b/drivers/video/msm/mdp4_overlay_dsi_video.c
+index 68194a4..97b56bd 100644
+--- a/drivers/video/msm/mdp4_overlay_dsi_video.c
++++ b/drivers/video/msm/mdp4_overlay_dsi_video.c
+@@ -32,6 +32,10 @@
+ #include "mdp4.h"
+ #include "mipi_dsi.h"
+ 
++//dma completion timeout  hang workaround     
++#define DMA_COMP_TIMEOUT_WR                   
++
++
+ #define DSI_VIDEO_BASE	0xE0000
+ 
+ static int first_pixel_start_x;
+@@ -65,6 +69,222 @@ void mdp4_dsi_video_fxn_register(cmd_fxn_t fxn)
+ static void mdp4_overlay_dsi_video_wait4event(struct msm_fb_data_type *mfd,
+ 						int intr_done);
+ 
++#ifdef DMA_COMP_TIMEOUT_WR
++static struct msm_fb_data_type *local_mfd1 = NULL;
++int dma_comp_timeout = 0;
++int mdp4_dsi_video_reinitialize(void)
++{
++	int dsi_width;
++	int dsi_height;
++	int dsi_bpp;
++	int dsi_border_clr;
++	int dsi_underflow_clr;
++	int dsi_hsync_skew;
++
++	int hsync_period;
++	int hsync_ctrl;
++	int vsync_period;
++	int display_hctl;
++	int display_v_start;
++	int display_v_end;
++	int active_hctl;
++	int active_h_start;
++	int active_h_end;
++	int active_v_start;
++	int active_v_end;
++	int ctrl_polarity;
++	int h_back_porch;
++	int h_front_porch;
++	int v_back_porch;
++	int v_front_porch;
++	int hsync_pulse_width;
++	int vsync_pulse_width;
++	int hsync_polarity;
++	int vsync_polarity;
++	int data_en_polarity;
++	int hsync_start_x;
++	int hsync_end_x;
++	uint8 *buf;
++	int bpp, ptype;
++	struct fb_info *fbi;
++	struct fb_var_screeninfo *var;
++	struct msm_fb_data_type *mfd;
++	struct mdp4_overlay_pipe *pipe;
++	int ret;
++	
++	mfd = local_mfd1;
++
++	if (!mfd)
++		return -ENODEV;
++
++	if (mfd->key != MFD_KEY)
++		return -EINVAL;
++
++	mdp4_overlay_ctrl_db_reset();
++
++	fbi = mfd->fbi;
++	var = &fbi->var;
++
++	bpp = fbi->var.bits_per_pixel / 8;
++	buf = (uint8 *) fbi->fix.smem_start;
++	buf += fbi->var.xoffset * bpp +
++		fbi->var.yoffset * fbi->fix.line_length;
++
++	if (dsi_pipe == NULL) {
++		ptype = mdp4_overlay_format2type(mfd->fb_imgType);
++		if (ptype < 0)
++			printk(KERN_INFO "%s: format2type failed\n", __func__);
++		pipe = mdp4_overlay_pipe_alloc(ptype, MDP4_MIXER0);
++		if (pipe == NULL) {
++			printk(KERN_INFO "%s: pipe_alloc failed\n", __func__);
++			return -EBUSY;
++		}
++		pipe->pipe_used++;
++		pipe->mixer_stage  = MDP4_MIXER_STAGE_BASE;
++		pipe->mixer_num  = MDP4_MIXER0;
++		pipe->src_format = mfd->fb_imgType;
++		mdp4_overlay_panel_mode(pipe->mixer_num, MDP4_PANEL_DSI_VIDEO);
++		ret = mdp4_overlay_format2pipe(pipe);
++		if (ret < 0)
++			printk(KERN_INFO "%s: format2type failed\n", __func__);
++
++		dsi_pipe = pipe; /* keep it */
++		init_completion(&dsi_video_comp);
++
++		mdp4_init_writeback_buf(mfd, MDP4_MIXER0);
++		pipe->blt_addr = 0;
++
++	} else {
++		pipe = dsi_pipe;
++	}
++
++	/* MDP cmd block enable */
++	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
++
++	if (!(mfd->cont_splash_done)) {
++		mfd->cont_splash_done = 1;
++		mdp_pipe_ctrl(MDP_CMD_BLOCK,
++			      MDP_BLOCK_POWER_OFF, FALSE);
++		mdp4_overlay_dsi_video_wait4event(mfd, INTR_DMA_P_DONE);
++		/* disable timing generator */
++		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
++		mipi_dsi_controller_cfg(0);
++	}
++
++	if (is_mdp4_hw_reset()) {
++		pr_err("%s: mdp4_hw_init .. \n", __func__);
++		mdp4_hw_init();
++		outpdw(MDP_BASE + 0x0038, mdp4_display_intf);
++	}
++
++	pipe->src_height = fbi->var.yres;
++	pipe->src_width = fbi->var.xres;
++	pipe->src_h = fbi->var.yres;
++	pipe->src_w = fbi->var.xres;
++	pipe->src_y = 0;
++	pipe->src_x = 0;
++	pipe->srcp0_addr = (uint32) buf;
++	pipe->srcp0_ystride = fbi->fix.line_length;
++	pipe->bpp = bpp;
++
++	pipe->dst_h = fbi->var.yres;
++	pipe->dst_w = fbi->var.xres;
++
++	mdp4_overlay_dmap_xy(pipe);	/* dma_p */
++	mdp4_overlay_dmap_cfg(mfd, 1);
++
++	mdp4_overlay_rgb_setup(pipe);
++
++	mdp4_mixer_stage_up(pipe);
++
++	mdp4_overlayproc_cfg(pipe);
++
++	/*
++	 * DSI timing setting
++	 */
++	h_back_porch = var->left_margin;
++	h_front_porch = var->right_margin;
++	v_back_porch = var->upper_margin;
++	v_front_porch = var->lower_margin;
++	hsync_pulse_width = var->hsync_len;
++	vsync_pulse_width = var->vsync_len;
++	dsi_border_clr = mfd->panel_info.lcdc.border_clr;
++	dsi_underflow_clr = mfd->panel_info.lcdc.underflow_clr;
++	dsi_hsync_skew = mfd->panel_info.lcdc.hsync_skew;
++	dsi_width = mfd->panel_info.xres +
++		mfd->panel_info.mipi.xres_pad;
++	dsi_height = mfd->panel_info.yres +
++		mfd->panel_info.mipi.yres_pad;
++	dsi_bpp = mfd->panel_info.bpp;
++
++	hsync_period = hsync_pulse_width + h_back_porch + dsi_width
++				+ h_front_porch;
++	hsync_ctrl = (hsync_period << 16) | hsync_pulse_width;
++	hsync_start_x = h_back_porch + hsync_pulse_width;
++	hsync_end_x = hsync_period - h_front_porch - 1;
++	display_hctl = (hsync_end_x << 16) | hsync_start_x;
++
++	vsync_period =
++	    (vsync_pulse_width + v_back_porch + dsi_height + v_front_porch);
++	display_v_start = ((vsync_pulse_width + v_back_porch) * hsync_period)
++				+ dsi_hsync_skew;
++	display_v_end =
++	  ((vsync_period - v_front_porch) * hsync_period) + dsi_hsync_skew - 1;
++
++	if (dsi_width != var->xres) {
++		active_h_start = hsync_start_x + first_pixel_start_x;
++		active_h_end = active_h_start + var->xres - 1;
++		active_hctl =
++		    ACTIVE_START_X_EN | (active_h_end << 16) | active_h_start;
++	} else {
++		active_hctl = 0;
++	}
++
++	if (dsi_height != var->yres) {
++		active_v_start =
++		    display_v_start + first_pixel_start_y * hsync_period;
++		active_v_end = active_v_start + (var->yres) * hsync_period - 1;
++		active_v_start |= ACTIVE_START_Y_EN;
++	} else {
++		active_v_start = 0;
++		active_v_end = 0;
++	}
++
++	dsi_underflow_clr |= 0x80000000;	/* enable recovery */
++	hsync_polarity = 0;
++	vsync_polarity = 0;
++	data_en_polarity = 0;
++
++	ctrl_polarity =
++	    (data_en_polarity << 2) | (vsync_polarity << 1) | (hsync_polarity);
++
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x4, hsync_ctrl);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x8, vsync_period * hsync_period);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0xc,
++				vsync_pulse_width * hsync_period);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x10, display_hctl);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x14, display_v_start);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x18, display_v_end);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x1c, active_hctl);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x20, active_v_start);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x24, active_v_end);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x28, dsi_border_clr);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x2c, dsi_underflow_clr);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x30, dsi_hsync_skew);
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE + 0x38, ctrl_polarity);
++	mdp4_overlay_reg_flush(pipe, 1);
++	mdp_histogram_ctrl_all(TRUE);
++	
++	/* enable DSI block */
++	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 1);
++	mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
++		
++	/* MDP cmd block disable */
++	//mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);	
++	return 0;
++}
++#endif
++
+ int mdp4_dsi_video_on(struct platform_device *pdev)
+ {
+ 	int dsi_width;
+@@ -107,6 +327,11 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
+ 
+ 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
+ 
++#ifdef DMA_COMP_TIMEOUT_WR
++	if(local_mfd1 == NULL)
++		local_mfd1 = mfd;
++#endif
++
+ 	if (!mfd)
+ 		return -ENODEV;
+ 
+@@ -165,9 +390,14 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
+ 	}
+ 
+ 	if (is_mdp4_hw_reset()) {
+-		printk(KERN_INFO "%s: mdp4_hw_init .. \n", __func__);
+ 		mdp4_hw_init();
+ 		outpdw(MDP_BASE + 0x0038, mdp4_display_intf);
++
++
++#ifdef DMA_COMP_TIMEOUT_WR                     
++		if(dma_comp_timeout)           
++			dma_comp_timeout = 0;   
++#endif
+ 	}
+ 
+ 	pipe->src_height = fbi->var.yres;
+@@ -451,7 +681,16 @@ static void mdp4_overlay_dsi_video_wait4event(struct msm_fb_data_type *mfd,
+ 	outp32(MDP_INTR_ENABLE, mdp_intr_mask);
+ 	mdp_enable_irq(MDP_DMA2_TERM);  /* enable intr */
+ 	spin_unlock_irqrestore(&mdp_spin_lock, flag);
++
++#ifdef DMA_COMP_TIMEOUT_WR                                                                                                           
++	if(!wait_for_completion_timeout(&dsi_video_comp, msecs_to_jiffies(VSYNC_PERIOD*20))) {		                              
++			dma_comp_timeout = 1;                                                                                         
++			mdp4_dsi_video_reinitialize();                                                                                
++			pr_err("%s : completion timeout occured, mdp4 reint s ending, mfd index = %d...\n", __func__,mfd->index);     
++		}                                                                                                                     
++#else                                                                                                                                
+ 	wait_for_completion(&dsi_video_comp);
++#endif
+ 	mdp_disable_irq(MDP_DMA2_TERM);
+ }
+ 
+@@ -472,8 +711,15 @@ static void mdp4_overlay_dsi_video_dma_busy_wait(struct msm_fb_data_type *mfd)
+ 	if (need_wait) {
+ 		/* wait until DMA finishes the current job */
+ 		pr_debug("%s: pending pid=%d\n", __func__, current->pid);
+-//		wait_for_completion(&mfd->dma->comp);
+-		wait_for_completion_timeout(&mfd->dma->comp, msecs_to_jiffies(VSYNC_PERIOD*2));
++#ifdef DMA_COMP_TIMEOUT_WR
++		if(!wait_for_completion_timeout(&mfd->dma->comp, msecs_to_jiffies(VSYNC_PERIOD*2))) {
++			dma_comp_timeout = 1;
++			mdp4_dsi_video_reinitialize();
++			pr_err("%s : completion timeout occured, mdp4 reint s ending, mfd index = %d...\n", __func__,mfd->index);
++		}
++#else
++		wait_for_completion(&mfd->dma->comp);
++#endif
+ 	}
+ 	pr_debug("%s: done pid=%d\n", __func__, current->pid);
+ }
+@@ -686,3 +932,4 @@ void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd)
+ 	mdp4_overlay_dsi_video_vsync_push(mfd, pipe);
+ 	mutex_unlock(&mfd->dma->ov_mutex);
+ }
++
+diff --git a/drivers/video/msm/mdp4_util.c b/drivers/video/msm/mdp4_util.c
+index 4419c2b..e8d2a92 100644
+--- a/drivers/video/msm/mdp4_util.c
++++ b/drivers/video/msm/mdp4_util.c
+@@ -32,9 +32,13 @@
+ #include "msm_fb.h"
+ #include "mdp4.h"
+ 
+-// lcd black out workaround
++ //dma completion timeout hang workaround       
++#define DMA_COMP_TIMEOUT_WR                    
++
++#ifdef DMA_COMP_TIMEOUT_WR
+ #define MDP4_ERROR
+-extern int dma_tx_timeout;
++extern int dma_comp_timeout;
++#endif
+ 
+ struct mdp4_statistic mdp4_stat;
+ 
+@@ -49,9 +53,10 @@ unsigned is_mdp4_hw_reset(void)
+ 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+ 	}
+ 
+-	// lcd black out workaround
+-	if(dma_tx_timeout)
++#if defined(DMA_COMP_TIMEOUT_WR)     
++	if(dma_comp_timeout)         
+ 		hw_reset = 1;
++#endif
+ 
+ 	return hw_reset;
+ }
+@@ -264,13 +269,7 @@ void mdp4_hw_init(void)
+ 	 * on LCDC mode. However DMA_P does not stall at MDDI mode.
+ 	 * This need further investigation.
+ 	 */
+-
+-//lcd blackout workaround
+-	if(dma_tx_timeout){
+-		mdp4_sw_reset(0x17);
+-		dma_tx_timeout = 0;
+-	}		
+-	//mdp4_sw_reset(0x17);
++	mdp4_sw_reset(0x17);
+ #endif
+ 
+ 	if (mdp_rev > MDP_REV_41) {
+@@ -3208,3 +3207,4 @@ int mdp4_igc_lut_config(struct mdp_igc_lut_data *cfg)
+ error:
+ 	return ret;
+ }
++
+diff --git a/drivers/video/msm/mipi_dsi_host.c b/drivers/video/msm/mipi_dsi_host.c
+index 2ae32ed..ec6e1fd 100644
+--- a/drivers/video/msm/mipi_dsi_host.c
++++ b/drivers/video/msm/mipi_dsi_host.c
+@@ -39,6 +39,9 @@
+ #include "mdp.h"
+ #include "mdp4.h"
+ 
++//dsi cmd tx completion timeout workaround
++#define DSI_DMA_COMP_WR
++
+ static struct completion dsi_dma_comp;
+ static struct completion dsi_mdp_comp;
+ static struct dsi_buf dsi_tx_buf;
+@@ -57,10 +60,6 @@ enum {
+ 	STAT_DSI_MDP
+ };
+ 
+-
+-//lcd black out workaround
+-int dma_tx_timeout = 0;
+-
+ #ifdef CONFIG_FB_MSM_MDP40
+ void mipi_dsi_mdp_stat_inc(int which)
+ {
+@@ -790,9 +789,6 @@ void mipi_dsi_host_init(struct mipi_panel_info *pinfo)
+ 	else
+ 		pinfo->rgb_swap = DSI_RGB_SWAP_BGR;
+ 
+-	//lcd black out workaround
+-	mipi_dsi_sw_reset();
+-
+ 	if (pinfo->mode == DSI_VIDEO_MODE) {
+ 		data = 0;
+ 		if (pinfo->pulse_mode_hsa_he)
+@@ -1344,12 +1340,17 @@ int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
+ 	MIPI_OUTP(MIPI_DSI_BASE + 0x08c, 0x01);	/* trigger */
+ 	wmb();
+ 	
+-	// to avoid hang dsi completion timeout - 1s timeout
+-	//wait_for_completion(&dsi_dma_comp);
++#ifdef DSI_DMA_COMP_WR
+ 	if(!wait_for_completion_timeout(&dsi_dma_comp, msecs_to_jiffies(VSYNC_PERIOD*20))) { // 320ms
+-		dma_tx_timeout = 1;
+-		printk(KERN_ERR "%s: wait_for_completion_timeout err .. \n", __func__);
++		pr_err("%s: wait_for_completion_timeout err .. \n", __func__);
++		dma_unmap_single(&dsi_dev, tp->dmap, len, DMA_TO_DEVICE); 
++		tp->dmap = 0;                                             
++		return 0;                                                 
++
+ 	}
++#else
++	wait_for_completion(&dsi_dma_comp);
++#endif
+ 
+ 	dma_unmap_single(&dsi_dev, tp->dmap, len, DMA_TO_DEVICE);
+ 	tp->dmap = 0;
+@@ -1504,3 +1505,4 @@ irqreturn_t mipi_dsi_isr(int irq, void *ptr)
+ 
+ 	return IRQ_HANDLED;
+ }
++
+diff --git a/drivers/video/msm/msm_fb.c b/drivers/video/msm/msm_fb.c
+index 6e37323..600aca5 100755
+--- a/drivers/video/msm/msm_fb.c
++++ b/drivers/video/msm/msm_fb.c
+@@ -68,6 +68,9 @@
+ #define MSM_FB_NUM	3
+ #endif
+ 
++//dma completion timeout hang workaround     
++#define DMA_COMP_TIMEOUT_WR  
++                
+ static unsigned char *fbram;
+ static unsigned char *fbram_phys;
+ static int fbram_size;
+@@ -2701,6 +2704,10 @@ static int msmfb_overlay_play_wait(struct fb_info *info, unsigned long *argp)
+ 	return ret;
+ }
+ 
++#ifdef DMA_COMP_TIMEOUT_WR       
++extern int dma_comp_timeout;     
++#endif
++
+ static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
+ {
+ 	int	ret;
+@@ -2708,6 +2715,17 @@ static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
+ 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+ 	struct msm_fb_panel_data *pdata;
+ 
++#ifdef DMA_COMP_TIMEOUT_WR           
++	if(dma_comp_timeout) {       
++		if(mfd->index == 0) {
++			printk(KERN_ERR "%s is called after completion timeout, mfd index = %d...\n", __func__, mfd->index);                                                                         
++			msmfb_overlay_unset(info, argp);
++			printk(KERN_ERR "%s is called again before play, mfd index = %d...\n", __func__, mfd->index);			
++			dma_comp_timeout = 0;
++		}
++	}
++#endif
++
+ 	if (mfd->overlay_play_enable == 0)	/* nothing to do */
+ 		return 0;
+ 
+@@ -3618,3 +3636,4 @@ int __init msm_fb_init(void)
+ }
+ 
+ module_init(msm_fb_init);
++
+diff --git a/lge/com_device/input/apds9900.c b/lge/com_device/input/apds9900.c
+index 56ac4a8..2e8de98 100644
+--- a/lge/com_device/input/apds9900.c
++++ b/lge/com_device/input/apds9900.c
+@@ -198,7 +198,7 @@ enum
+ 		APDS9900_DEBUG_INTR_INFO	= 1U << 5,
+ };
+ 
+-static unsigned int apds9900_debug_mask = APDS9900_DEBUG_ERROR_CHECK;
++static unsigned int apds9900_debug_mask = APDS9900_DEBUG_ERROR_CHECK|APDS9900_DEBUG_FUNC_TRACE;
+ 
+ module_param_named(debug_mask, apds9900_debug_mask, int,
+                 S_IRUGO | S_IWUSR );
+@@ -2010,3 +2010,4 @@ static void __exit apds9900_exit(void)
+ 
+ module_init(apds9900_init);
+ module_exit(apds9900_exit);
++
+diff --git a/lge/lge_board/i_atnt/board_i_atnt.c b/lge/lge_board/i_atnt/board_i_atnt.c
+index e9ff515..7d78e70 100644
+--- a/lge/lge_board/i_atnt/board_i_atnt.c
++++ b/lge/lge_board/i_atnt/board_i_atnt.c
+@@ -1499,7 +1499,8 @@ static void gsbi_qup_i2c_gpio_config(int adap_id, int config_type)
+ #define MSM_ION_AUDIO_SIZE	MSM_PMEM_AUDIO_SIZE
+ 
+ #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+-#define MSM_ION_HEAP_NUM	9
++//#define MSM_ION_HEAP_NUM	9
++#define MSM_ION_HEAP_NUM	8
+ #define MSM_HDMI_PRIM_ION_SF_SIZE MSM_HDMI_PRIM_PMEM_SF_SIZE
+ static unsigned msm_ion_sf_size = MSM_ION_SF_SIZE;
+ #else
+@@ -1794,7 +1795,7 @@ static int configure_uart_gpios(int on)
+ 	.jitter_filter_enable	= 1,
+ 	.jitter_curr_ratio		= 30,	
+     .accuracy_filter_enable = 1,
+-	.sleep_mode             = 0,
++	.sleep_mode             = 1,
+ 	.ta_debouncing_mode     = 0,
+ 	.irqflags 				= IRQF_TRIGGER_FALLING,
+ };
+@@ -3086,6 +3087,7 @@ static void __init pm8901_vreg_mpp0_init(void)
+ 			.memory_type = ION_SMI_TYPE,
+ 			.extra_data = (void *) &cp_mfc_ion_pdata,
+ 		},
++#if 0	
+ 		{
+ 			.id	= ION_SF_HEAP_ID,
+ 			.type	= ION_HEAP_TYPE_CARVEOUT,
+@@ -3094,6 +3096,7 @@ static void __init pm8901_vreg_mpp0_init(void)
+ 			.memory_type = ION_EBI_TYPE,
+ 			.extra_data = (void *)&co_ion_pdata,
+ 		},
++#endif		
+ 		{
+ 			.id	= ION_CAMERA_HEAP_ID,
+ 			.type	= ION_HEAP_TYPE_CARVEOUT,
+@@ -3186,7 +3189,7 @@ static void reserve_ion_memory(void)
+ 	msm8x60_reserve_table[MEMTYPE_SMI].size += MSM_ION_MM_FW_SIZE;
+ 	msm8x60_reserve_table[MEMTYPE_SMI].size += MSM_ION_MM_SIZE;
+ 	msm8x60_reserve_table[MEMTYPE_SMI].size += MSM_ION_MFC_SIZE;
+-	msm8x60_reserve_table[MEMTYPE_EBI1].size += MSM_ION_CAMERA_SIZE;
++//	msm8x60_reserve_table[MEMTYPE_EBI1].size += MSM_ION_CAMERA_SIZE;
+ 	msm8x60_reserve_table[MEMTYPE_EBI1].size += MSM_ION_WB_SIZE;
+ 	msm8x60_reserve_table[MEMTYPE_EBI1].size += MSM_ION_AUDIO_SIZE;
+ #endif
+diff --git a/lge/lge_board/i_atnt/devices_i_atnt.c b/lge/lge_board/i_atnt/devices_i_atnt.c
+index 086f912..67b2814 100644
+--- a/lge/lge_board/i_atnt/devices_i_atnt.c
++++ b/lge/lge_board/i_atnt/devices_i_atnt.c
+@@ -140,6 +140,15 @@ static void charm_ap2mdm_kpdpwr_off(void)
+ 	}
+ }
+ 
++#ifdef CONFIG_LGE_MDM_PMIC_8028
++static void charm_force_reset(void)
++{
++	gpio_direction_output(AP2MDM_PMIC_RESET_N, 1);
++	msleep(4000);
++	gpio_direction_output(AP2MDM_PMIC_RESET_N, 0);
++}
++#endif
++
+ static struct resource charm_resources[] = {
+ 	/* MDM2AP_ERRFATAL */
+ 	{
+@@ -158,6 +167,9 @@ static void charm_ap2mdm_kpdpwr_off(void)
+ static struct charm_platform_data mdm_platform_data = {
+ 	.charm_modem_on		= charm_ap2mdm_kpdpwr_on,
+ 	.charm_modem_off	= charm_ap2mdm_kpdpwr_off,
++#ifdef CONFIG_LGE_MDM_PMIC_8028
++	.charm_force_reset      = charm_force_reset,
++#endif 
+ };
+ 
+ struct platform_device msm_charm_modem = {
+-- 
+1.7.10
+

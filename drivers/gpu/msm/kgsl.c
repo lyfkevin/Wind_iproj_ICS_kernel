@@ -514,9 +514,8 @@ void kgsl_late_resume_driver(struct early_suspend *h)
 					struct kgsl_device, display_off);
 	KGSL_PWR_WARN(device, "late resume start\n");
 	mutex_lock(&device->mutex);
-	//kgsl_pwrctrl_wake(device);
-	device->pwrctrl.restore_slumber = 0;
 	kgsl_pwrctrl_wake(device);
+	device->pwrctrl.restore_slumber = 0;
 	kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_TURBO);
 	mutex_unlock(&device->mutex);
 	kgsl_check_idle(device);
@@ -2238,12 +2237,9 @@ kgsl_register_device(struct kgsl_device *device)
 	if (ret != 0)
 		goto err_close_mmu;
 
-//	if (cpu_is_msm8x60())
-//		wake_lock_init(&device->idle_wakelock,
-//					   WAKE_LOCK_IDLE, device->name);
-	wake_lock_init(&device->idle_wakelock, WAKE_LOCK_IDLE, device->name);
-	pm_qos_add_request(&device->pm_qos_req_dma, PM_QOS_CPU_DMA_LATENCY,
-	                        PM_QOS_DEFAULT_VALUE);
+	if (cpu_is_msm8x60())
+		wake_lock_init(&device->idle_wakelock,
+					   WAKE_LOCK_IDLE, device->name);
 
 	idr_init(&device->context_idr);
 

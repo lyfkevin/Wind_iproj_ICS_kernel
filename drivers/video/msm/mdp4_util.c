@@ -32,13 +32,9 @@
 #include "msm_fb.h"
 #include "mdp4.h"
 
- //dma completion timeout hang workaround       
-#define DMA_COMP_TIMEOUT_WR                    
-
-#ifdef DMA_COMP_TIMEOUT_WR
+// lcd black out workaround
 #define MDP4_ERROR
-extern int dma_comp_timeout;
-#endif
+extern int dma_tx_timeout;
 
 struct mdp4_statistic mdp4_stat;
 
@@ -53,10 +49,9 @@ unsigned is_mdp4_hw_reset(void)
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	}
 
-#if defined(DMA_COMP_TIMEOUT_WR)     
-	if(dma_comp_timeout)         
+	// lcd black out workaround
+	if(dma_tx_timeout)
 		hw_reset = 1;
-#endif
 
 	return hw_reset;
 }
@@ -269,7 +264,13 @@ void mdp4_hw_init(void)
 	 * on LCDC mode. However DMA_P does not stall at MDDI mode.
 	 * This need further investigation.
 	 */
-	mdp4_sw_reset(0x17);
+
+//lcd blackout workaround
+	if(dma_tx_timeout){
+		mdp4_sw_reset(0x17);
+		dma_tx_timeout = 0;
+	}		
+	//mdp4_sw_reset(0x17);
 #endif
 
 	if (mdp_rev > MDP_REV_41) {
@@ -3207,4 +3208,3 @@ int mdp4_igc_lut_config(struct mdp_igc_lut_data *cfg)
 error:
 	return ret;
 }
-

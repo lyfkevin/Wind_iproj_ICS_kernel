@@ -82,7 +82,7 @@
 #include <mach/rpm-regulator.h>
 #include <mach/restart.h>
 #include <mach/board-msm8660.h>
-#include <linux/msm_tsens.h>
+//#include <linux/msm_tsens.h>
 
 #include "devices.h"
 #include "devices_i_atnt.h"
@@ -1499,8 +1499,7 @@ unsigned char hdmi_is_primary;
 #define MSM_ION_AUDIO_SIZE	MSM_PMEM_AUDIO_SIZE
 
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-//#define MSM_ION_HEAP_NUM	9
-#define MSM_ION_HEAP_NUM	8
+#define MSM_ION_HEAP_NUM	9
 #define MSM_HDMI_PRIM_ION_SF_SIZE MSM_HDMI_PRIM_PMEM_SF_SIZE
 static unsigned msm_ion_sf_size = MSM_ION_SF_SIZE;
 #else
@@ -1795,7 +1794,7 @@ static struct touch_operation_role touch_role = {
 	.jitter_filter_enable	= 1,
 	.jitter_curr_ratio		= 30,	
     .accuracy_filter_enable = 1,
-	.sleep_mode             = 1,
+	.sleep_mode             = 0,
 	.ta_debouncing_mode     = 0,
 	.irqflags 				= IRQF_TRIGGER_FALLING,
 };
@@ -2424,20 +2423,20 @@ static struct platform_device *early_devices[] __initdata = {
 	&msm_device_dmov_adm1,
 };
 
-
+/*
 static struct tsens_platform_data pyr_tsens_pdata  = {
 		.tsens_factor		= 1000,
 		.hw_type		= MSM_8660,
 		.tsens_num_sensor	= 6,
 		.slope 		= 702,
 };
+*/
 
-/*
 static struct platform_device msm_tsens_device = {
 	.name   = "tsens-tm",
 	.id = -1,
 };
-*/
+
 
 #ifdef CONFIG_SENSORS_MSM_ADC
 static struct adc_access_fn xoadc_fn = {
@@ -2985,7 +2984,7 @@ static struct platform_device *surf_devices[] __initdata = {
 	&msm_device_rng,
 #endif
 
-	//&msm_tsens_device,
+	&msm_tsens_device,
 	&msm_rpm_device,
 #ifdef CONFIG_ION_MSM
 	&ion_dev,
@@ -3087,7 +3086,6 @@ static struct ion_platform_data ion_pdata = {
 			.memory_type = ION_SMI_TYPE,
 			.extra_data = (void *) &cp_mfc_ion_pdata,
 		},
-#if 0	
 		{
 			.id	= ION_SF_HEAP_ID,
 			.type	= ION_HEAP_TYPE_CARVEOUT,
@@ -3096,7 +3094,6 @@ static struct ion_platform_data ion_pdata = {
 			.memory_type = ION_EBI_TYPE,
 			.extra_data = (void *)&co_ion_pdata,
 		},
-#endif		
 		{
 			.id	= ION_CAMERA_HEAP_ID,
 			.type	= ION_HEAP_TYPE_CARVEOUT,
@@ -3189,7 +3186,7 @@ static void reserve_ion_memory(void)
 	msm8x60_reserve_table[MEMTYPE_SMI].size += MSM_ION_MM_FW_SIZE;
 	msm8x60_reserve_table[MEMTYPE_SMI].size += MSM_ION_MM_SIZE;
 	msm8x60_reserve_table[MEMTYPE_SMI].size += MSM_ION_MFC_SIZE;
-//	msm8x60_reserve_table[MEMTYPE_EBI1].size += MSM_ION_CAMERA_SIZE;
+	msm8x60_reserve_table[MEMTYPE_EBI1].size += MSM_ION_CAMERA_SIZE;
 	msm8x60_reserve_table[MEMTYPE_EBI1].size += MSM_ION_WB_SIZE;
 	msm8x60_reserve_table[MEMTYPE_EBI1].size += MSM_ION_AUDIO_SIZE;
 #endif
@@ -6221,7 +6218,7 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 
 	pmic_reset_irq = PM8058_IRQ_BASE + PM8058_RESOUT_IRQ;
 
-	msm_tsens_early_init(&pyr_tsens_pdata);
+	//msm_tsens_early_init(&pyr_tsens_pdata);
 
 	/*
 	 * Initialize RPM first as other drivers and devices may need
