@@ -515,6 +515,9 @@ static int touch_ic_init(struct lge_touch_data *ts)
 	memset(ts->jitter_filter.his_data, 0, sizeof(ts->jitter_filter.his_data));
 	memset(&ts->accuracy_filter.his_data, 0, sizeof(ts->accuracy_filter.his_data));
 
+	ts->accuracy_filter.finish_filter = 0;
+	ts->accuracy_filter.his_data.count = 0; 
+
 	return 0;
 
 err_out_retry:

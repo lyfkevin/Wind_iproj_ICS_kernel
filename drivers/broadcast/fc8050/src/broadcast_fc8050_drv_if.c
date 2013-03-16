@@ -12,7 +12,7 @@
 
 #define FC8050_USES_STATIC_BUFFER
 
-#define TDMB_MPI_BUF_SIZE 			(188*16*4 + 8)/* interrupt size + sizeof(TDMB_BB_HEADER_TYPE) */
+#define TDMB_MPI_BUF_SIZE 			(188*32 + 8)//interrupt size + sizeof(TDMB_BB_HEADER_TYPE)
 #define TDMB_MPI_BUF_CHUNK_NUM  	10
 
 static uint8*	gpMPI_Buffer = NULL;
