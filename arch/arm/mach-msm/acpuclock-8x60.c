@@ -871,14 +871,6 @@ static struct acpuclk_data acpuclk_8x60_data = {
 	.wait_for_irq_khz = MAX_AXI,
 };
 
-int processor_name_read_proc(char *page, char **start, off_t off,
-			   int count, int *eof, void *data)
-{
-	char *p = page;
-	p += sprintf(p, "1.5GHz x2 - WIND");
-	return p - page;
-}
-
 static int __init acpuclk_8x60_init(struct acpuclk_soc_data *soc_data)
 {
 	struct clkctl_acpu_speed *max_freq;
