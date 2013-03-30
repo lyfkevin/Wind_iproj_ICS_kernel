@@ -1,9 +1,0 @@
-kernel/arch/arm/mach-msm/pil-q6v3.ko
-kernel/arch/arm/mach-msm/pil-tzapps.ko
-kernel/arch/arm/mach-msm/pil-modem.ko
-kernel/arch/arm/mach-msm/sdio_al.ko
-kernel/arch/arm/mach-msm/sdio_al_test.ko
-kernel/arch/arm/mach-msm/sdio_al_dloader.ko
-kernel/arch/arm/mach-msm/rpm_stats.ko
-kernel/arch/arm/mach-msm/rpm_log.ko
-kernel/arch/arm/mach-msm/qdsp6v2/snddev_icodec.ko
