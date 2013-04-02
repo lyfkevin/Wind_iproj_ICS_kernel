@@ -35,8 +35,8 @@
 #include "acpuclock.h"
 
 #define MPDEC_TAG                       "[MPDEC]: "
-#define MSM_MPDEC_STARTDELAY            70000
-#define MSM_MPDEC_DELAY                 500
+#define MSM_MPDEC_STARTDELAY            35000
+#define MSM_MPDEC_DELAY                 250
 #define MSM_MPDEC_PAUSE                 10000
 #define MSM_MPDEC_IDLE_FREQ             486000
 
@@ -72,8 +72,8 @@ static struct msm_mpdec_tuners {
 	.idle_freq = MSM_MPDEC_IDLE_FREQ,
 };
 
-static unsigned int NwNs_Threshold[4] = {35, 0, 0, 5};
-static unsigned int TwTs_Threshold[4] = {250, 0, 0, 250};
+static unsigned int NwNs_Threshold[4] = {25, 0, 0, 5};
+static unsigned int TwTs_Threshold[4] = {140, 0, 0, 140};
 
 extern unsigned int get_rq_info(void);
 
