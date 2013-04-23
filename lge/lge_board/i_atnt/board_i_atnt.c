@@ -5980,7 +5980,7 @@ static unsigned int bcm432x_sdcc_wlan_slot_status(struct device *dev)
 }
 
 static struct mmc_platform_data bcm432x_sdcc_wlan_data = {
-    .ocr_mask   	= MMC_VDD_30_31,
+    .ocr_mask   	= MMC_VDD_28_29 | MMC_VDD_29_30,
     .translate_vdd	= msm_sdcc_setup_power,
     .mmc_bus_width	= MMC_CAP_4_BIT_DATA,
     .status     	= bcm432x_sdcc_wlan_slot_status,
