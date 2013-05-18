@@ -263,7 +263,7 @@ static int mipi_dsi_panel_power(int on)
 	}
 
 	if(on){
-		rc = regulator_set_voltage(reg_8901_l2, 3000000, 3000000);
+		rc = regulator_set_voltage(reg_8901_l2, 2800000, 2800000);
 		if (!rc)
 			rc = regulator_enable(reg_8901_l2);
 		if (rc) {
@@ -282,7 +282,7 @@ static int mipi_dsi_panel_power(int on)
 		}
 		udelay(500); // 100us
 
-		rc = regulator_set_voltage(reg_8901_l3, 3000000, 3000000); // +3V0_LCD_VCI
+		rc = regulator_set_voltage(reg_8901_l3, 2800000, 2800000); // +3V0_LCD_VCI
 		if (!rc)
 			rc = regulator_enable(reg_8901_l3);
 		if (rc) {
@@ -412,7 +412,7 @@ static struct backlight_platform_data lm3530_data = {
 	0xBB = 26 mA full-scale current
 	0xBF= 29.5 mA full-scale current
 	*/
-	.min_brightness = 0x00,// 0x05, //0x09,
+	.min_brightness = 0x05, //0x00,0x09
 	.max_brightness = 0x71,
 };
 	

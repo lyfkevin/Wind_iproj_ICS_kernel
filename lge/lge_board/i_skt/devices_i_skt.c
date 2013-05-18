@@ -2232,8 +2232,13 @@ struct platform_device msm_device_smd = {
 };
 
 static struct msm_watchdog_pdata msm_watchdog_pdata = {
+#if 0 /*                                                        */
 	.pet_time = 5000,
 	.bark_time = 11000,
+#else
+	.pet_time = 10000,      //10 second
+	.bark_time = 16000,     //16 second
+#endif
 	.has_secure = true,
 };
 
