@@ -1801,8 +1801,8 @@ static struct touch_device_caps touch_caps = {
 };
 
 static struct touch_operation_role touch_role = {
-	.operation_mode 		= INTERRUPT_MODE,
-	.key_type      		= TOUCH_HARD_KEY,
+	.operation_mode     = INTERRUPT_MODE,
+	.key_type      = TOUCH_HARD_KEY,
 	.report_mode      = REDUCED_REPORT_MODE,//CONTINUOUS_REPORT_MODE,
 	.delta_pos_threshold     = 5,//0,
 	.orientation 			= 0,
