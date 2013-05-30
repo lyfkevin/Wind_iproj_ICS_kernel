@@ -32,6 +32,10 @@
 #define LMF_BROWSER_THRESHOLD  500000
 #endif
 
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_GPU_CONTROL
+extern bool gpu_busy_state;
+#endif
+
 struct clk_pair {
 	const char *name;
 	uint map;
@@ -366,6 +370,13 @@ static void kgsl_pwrctrl_busy_time(struct kgsl_device *device, bool on_time)
 		else
 			lmf_browser_state = true;
 	}
+#endif
+
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_GPU_CONTROL
+	if (on_time)
+		gpu_busy_state = true;
+	else
+		gpu_busy_state = false;
 #endif
 }
 
