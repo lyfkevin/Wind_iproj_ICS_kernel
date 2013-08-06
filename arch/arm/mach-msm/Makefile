@@ -41,7 +41,7 @@ ifdef CONFIG_ARCH_QSD8X50
 endif
 
 obj-$(CONFIG_SMP) += headsmp.o platsmp.o
-obj-$(CONFIG_HOTPLUG_CPU) += hotplug.o
+obj-$(CONFIG_HOTPLUG_CPU) += hotplug.o dyn_hotplug.o
 
 obj-$(CONFIG_MSM_CPU_AVS) += avs.o
 obj-$(CONFIG_MSM_AVS_HW) += avs_hw.o

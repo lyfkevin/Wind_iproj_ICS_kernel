@@ -101,6 +101,7 @@ struct cpufreq_policy {
 	unsigned int		max;    /* in kHz */
 	unsigned int		cur;    /* in kHz, only needed if cpufreq
 					 * governors are used */
+	unsigned int            util;  /* CPU utilization at max frequency */
 	unsigned int		policy; /* see above */
 	struct cpufreq_governor	*governor; /* see below */
 
@@ -260,7 +261,8 @@ int cpufreq_unregister_driver(struct cpufreq_driver *driver_data);
 
 
 void cpufreq_notify_transition(struct cpufreq_freqs *freqs, unsigned int state);
-
+void cpufreq_notify_utilization(struct cpufreq_policy *policy,
+	unsigned int load);
 
 static inline void cpufreq_verify_within_limits(struct cpufreq_policy *policy, unsigned int min, unsigned int max)
 {
@@ -331,6 +333,7 @@ static inline unsigned int cpufreq_get(unsigned int cpu)
 /* query the last known CPU freq (in kHz). If zero, cpufreq couldn't detect it */
 #ifdef CONFIG_CPU_FREQ
 unsigned int cpufreq_quick_get(unsigned int cpu);
+unsigned int cpufreq_quick_get_util(unsigned int cpu);
 #else
 static inline unsigned int cpufreq_quick_get(unsigned int cpu)
 {
